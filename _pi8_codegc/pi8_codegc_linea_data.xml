@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <record id="LA0" model="pi8.codegc.linea"><field name="key">LA0</field><field name="name">A0-GRAL. BLUSAS</field><field name="depto">1</field></record>
+    <record id="LA1" model="pi8.codegc.linea"><field name="key">LA1</field><field name="name">A1-BLUSA SRA</field><field name="depto">1</field></record>
+    <record id="LA2" model="pi8.codegc.linea"><field name="key">LA2</field><field name="name">A2-BLUSA TIPO POLO</field><field name="depto">1</field></record>
+    <record id="LA3" model="pi8.codegc.linea"><field name="key">LA3</field><field name="name">A3-BLUSA BASICA Y TOP BASICO</field><field name="depto">1</field></record>
+    <record id="LB0" model="pi8.codegc.linea"><field name="key">LB0</field><field name="name">B0-PANTALON DE VESTIR DE DAMA</field><field name="depto">1</field></record>
+    <record id="LB1" model="pi8.codegc.linea"><field name="key">LB1</field><field name="name">B1-PANALON CONTROLADO DE DAMA</field><field name="depto">1</field></record>
+    <record id="LB2" model="pi8.codegc.linea"><field name="key">LB2</field><field name="name">B2-PANTALON CAPRI</field><field name="depto">1</field></record>
+    <record id="LB3" model="pi8.codegc.linea"><field name="key">LB3</field><field name="name">B3-PANTALON DE CABALLERO</field><field name="depto">1</field></record>
+    <record id="LC1" model="pi8.codegc.linea"><field name="key">LC1</field><field name="name">C1-VESTIDO/CONJUNTO</field><field name="depto">1</field></record>
+    <record id="LC2" model="pi8.codegc.linea"><field name="key">LC2</field><field name="name">C2-SACO/BLAZER</field><field name="depto">1</field></record>
+    <record id="LD1" model="pi8.codegc.linea"><field name="key">LD1</field><field name="name">D1-FALDA</field><field name="depto">1</field></record>
+    <record id="LD2" model="pi8.codegc.linea"><field name="key">LD2</field><field name="name">D2-SHORT DE DAMA</field><field name="depto">1</field></record>
+    <record id="LD3" model="pi8.codegc.linea"><field name="key">LD3</field><field name="name">D3-SHORT DE CABALLERO</field><field name="depto">1</field></record>
+    <record id="LE1" model="pi8.codegc.linea"><field name="key">LE1</field><field name="name">E1-CAMISA</field><field name="depto">1</field></record>
+    <record id="LE2" model="pi8.codegc.linea"><field name="key">LE2</field><field name="name">E2-PLAYERA</field><field name="depto">1</field></record>
+    <record id="LF1" model="pi8.codegc.linea"><field name="key">LF1</field><field name="name">F1-BOLSA</field><field name="depto">2</field></record>
+    <record id="LF2" model="pi8.codegc.linea"><field name="key">LF2</field><field name="name">F2-CARTERA/MONEDERO</field><field name="depto">2</field></record>
+    <record id="LF3" model="pi8.codegc.linea"><field name="key">LF3</field><field name="name">F3-BILLETERA</field><field name="depto">2</field></record>
+    <record id="LF4" model="pi8.codegc.linea"><field name="key">LF4</field><field name="name">F4-ESTUCHE</field><field name="depto">2</field></record>
+    <record id="LF5" model="pi8.codegc.linea"><field name="key">LF5</field><field name="name">F5-NECESERE</field><field name="depto">2</field></record>
+    <record id="LF6" model="pi8.codegc.linea"><field name="key">LF6</field><field name="name">F6-MOCHILA ESCOLAR</field><field name="depto">2</field></record>
+    <record id="LF7" model="pi8.codegc.linea"><field name="key">LF7</field><field name="name">F7-MALETA DE VIAJE/PORTRATRAJES</field><field name="depto">2</field></record>
+    <record id="LF8" model="pi8.codegc.linea"><field name="key">LF8</field><field name="name">F8-PORTAFOLIO</field><field name="depto">2</field></record>
+    <record id="LG1" model="pi8.codegc.linea"><field name="key">LG1</field><field name="name">G1-CHAMARRA</field><field name="depto">1</field></record>
+    <record id="LG2" model="pi8.codegc.linea"><field name="key">LG2</field><field name="name">G2-SUDADERA/SWETER/CHALECO</field><field name="depto">1</field></record>
+    <record id="LG3" model="pi8.codegc.linea"><field name="key">LG3</field><field name="name">G3-ESTOLA</field><field name="depto">1</field></record>
+    <record id="LG4" model="pi8.codegc.linea"><field name="key">LG4</field><field name="name">G4-PANS</field><field name="depto">1</field></record>
+    <record id="LG9" model="pi8.codegc.linea"><field name="key">LG9</field><field name="name">G9-OTROS DE INVIERNO</field><field name="depto">1</field></record>
+    <record id="LH1" model="pi8.codegc.linea"><field name="key">LH1</field><field name="name">H1-TRAJES DE BAÑO</field><field name="depto">1</field></record>
+    <record id="LH2" model="pi8.codegc.linea"><field name="key">LH2</field><field name="name">H2-ROPA DEPORTIVA</field><field name="depto">1</field></record>
+    <record id="LH9" model="pi8.codegc.linea"><field name="key">LH9</field><field name="name">H9-OTROS DE VERANO Y DEPORTES</field><field name="depto">1</field></record>
+    <record id="LI1" model="pi8.codegc.linea"><field name="key">LI1</field><field name="name">I1-BRASIEL</field><field name="depto">1</field></record>
+    <record id="LI2" model="pi8.codegc.linea"><field name="key">LI2</field><field name="name">I2-PANTALETA</field><field name="depto">1</field></record>
+    <record id="LI3" model="pi8.codegc.linea"><field name="key">LI3</field><field name="name">I3-COPAS ADERIBLES</field><field name="depto">1</field></record>
+    <record id="LI4" model="pi8.codegc.linea"><field name="key">LI4</field><field name="name">I4-JUEGOS DE ROPA INTERIOR</field><field name="depto">1</field></record>
+    <record id="LI5" model="pi8.codegc.linea"><field name="key">LI5</field><field name="name">I5-MALLAS/PANTIMEDIAS/CALCETINES</field><field name="depto">1</field></record>
+    <record id="LI6" model="pi8.codegc.linea"><field name="key">LI6</field><field name="name">I6-TRUZAR/TANGA/BOXER DE CABALLERO</field><field name="depto">1</field></record>
+    <record id="LI7" model="pi8.codegc.linea"><field name="key">LI7</field><field name="name">I7-FAJAS</field><field name="depto">1</field></record>
+    <record id="LI8" model="pi8.codegc.linea"><field name="key">LI8</field><field name="name">I8-PIJAMAS</field><field name="depto">1</field></record>
+    <record id="LI9" model="pi8.codegc.linea"><field name="key">LI9</field><field name="name">I9-OTROS DE ROPA INTERIOR</field><field name="depto">1</field></record>
+    <record id="LJ1" model="pi8.codegc.linea"><field name="key">LJ1</field><field name="name">J1-PAR DE ARETES</field><field name="depto">2</field></record>
+    <record id="LJ2" model="pi8.codegc.linea"><field name="key">LJ2</field><field name="name">J2-PULCERA</field><field name="depto">2</field></record>
+    <record id="LJ3" model="pi8.codegc.linea"><field name="key">LJ3</field><field name="name">J3-COLLAR</field><field name="depto">2</field></record>
+    <record id="LJ4" model="pi8.codegc.linea"><field name="key">LJ4</field><field name="name">J4-ANILLO</field><field name="depto">2</field></record>
+    <record id="LJ5" model="pi8.codegc.linea"><field name="key">LJ5</field><field name="name">J5-PRENDEDOR</field><field name="depto">2</field></record>
+    <record id="LJ6" model="pi8.codegc.linea"><field name="key">LJ6</field><field name="name">J6-JGO. ACC. CLASICO</field><field name="depto">2</field></record>
+    <record id="LJ9" model="pi8.codegc.linea"><field name="key">LJ9</field><field name="name">J9-OTRS DE ACC. CLASICO</field><field name="depto">2</field></record>
+    <record id="LK0" model="pi8.codegc.linea"><field name="key">LK0</field><field name="name">K0-GRAL. ACC. DE PELO</field><field name="depto">2</field></record>
+    <record id="LL1" model="pi8.codegc.linea"><field name="key">LL1</field><field name="name">L1-RELOJ/ENCENDEDORES</field><field name="depto">2</field></record>
+    <record id="LL2" model="pi8.codegc.linea"><field name="key">LL2</field><field name="name">L2-SOMBRERO</field><field name="depto">2</field></record>
+    <record id="LL3" model="pi8.codegc.linea"><field name="key">LL3</field><field name="name">L3-CINTO</field><field name="depto">2</field></record>
+    <record id="LL4" model="pi8.codegc.linea"><field name="key">LL4</field><field name="name">L4-SHALINA</field><field name="depto">2</field></record>
+    <record id="LL5" model="pi8.codegc.linea"><field name="key">LL5</field><field name="name">L5-LENTES/ESTUCHES DE LENTES</field><field name="depto">2</field></record>
+    <record id="LL6" model="pi8.codegc.linea"><field name="key">LL6</field><field name="name">L6-CORBATA</field><field name="depto">2</field></record>
+    <record id="LL7" model="pi8.codegc.linea"><field name="key">LL7</field><field name="name">L7-ABANICO DE MANO</field><field name="depto">2</field></record>
+    <record id="LL8" model="pi8.codegc.linea"><field name="key">LL8</field><field name="name">L8-ESTUCHES PARA REGALO</field><field name="depto">2</field></record>
+    <record id="LL9" model="pi8.codegc.linea"><field name="key">LL9</field><field name="name">L9-OTROS DE ACC. DE LUJO</field><field name="depto">2</field></record>
+    <record id="LM1" model="pi8.codegc.linea"><field name="key">LM1</field><field name="name">M1-ESMALTE DE UÑAS</field><field name="depto">2</field></record>
+    <record id="LM2" model="pi8.codegc.linea"><field name="key">LM2</field><field name="name">M2-LAPIZ LABIAL</field><field name="depto">2</field></record>
+    <record id="LM3" model="pi8.codegc.linea"><field name="key">LM3</field><field name="name">M3-UÑAS POSTIZAS</field><field name="depto">2</field></record>
+    <record id="LM4" model="pi8.codegc.linea"><field name="key">LM4</field><field name="name">M4-MAQUILLAJE</field><field name="depto">2</field></record>
+    <record id="LM5" model="pi8.codegc.linea"><field name="key">LM5</field><field name="name">M5-COSMETICOS INDIRECTOS</field><field name="depto">2</field></record>
+    <record id="LM6" model="pi8.codegc.linea"><field name="key">LM6</field><field name="name">M6-CREMA</field><field name="depto">2</field></record>
+    <record id="LM7" model="pi8.codegc.linea"><field name="key">LM7</field><field name="name">M7-PERFUME</field><field name="depto">2</field></record>
+    <record id="LM8" model="pi8.codegc.linea"><field name="key">LM8</field><field name="name">M8-DESODORANTES DIVERSOS</field><field name="depto">2</field></record>
+    <record id="LN1" model="pi8.codegc.linea"><field name="key">LN1</field><field name="name">N1-CAMA</field><field name="depto">3</field></record>
+    <record id="LN2" model="pi8.codegc.linea"><field name="key">LN2</field><field name="name">N2-CORTINAS Y MANTELES</field><field name="depto">3</field></record>
+    <record id="LN3" model="pi8.codegc.linea"><field name="key">LN3</field><field name="name">N3-PINTURAS</field><field name="depto">3</field></record>
+    <record id="LN4" model="pi8.codegc.linea"><field name="key">LN4</field><field name="name">N4-DECORACION DE HOGAR GRAL.</field><field name="depto">3</field></record>
+    <record id="LN5" model="pi8.codegc.linea"><field name="key">LN5</field><field name="name">N5-DECORACION SIN CLASIFICAR</field><field name="depto">3</field></record>
+    <record id="LP0" model="pi8.codegc.linea"><field name="key">LP0</field><field name="name">P0-GRAL. CALZADO</field><field name="depto">4</field></record>
+    <record id="LP8" model="pi8.codegc.linea"><field name="key">LP8</field><field name="name">P8-PLANTILLA DE CALZADO</field><field name="depto">4</field></record>
+    <record id="LZ0" model="pi8.codegc.linea"><field name="key">LZ0</field><field name="name">Z0-GRAL. AUXILIAR</field><field name="depto">9</field></record>
+</odoo>

@@ -1,0 +1,28 @@
+<odoo>
+    <record id="pi8_stock.product_barcode_quickadd_wizard" model="ir.ui.view">
+        <field name="name">pi8.stock.product.barcode.quickadd.wizard</field>
+        <field name="model">pi8.stock.product.barcode.quickadd.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <field name="text_codes"/>
+                </group>
+                <footer>
+                    <button string="Add Products" type="object" name="add_stock_moves_to_picking_from_text" class="oe_highlight"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="pi8_stock.product_barcode_quickadd_wizard__extend_stock_view_picking_form" model="ir.ui.view">
+        <field name="name">pi8_stock.product_barcode_quickadd_wizard_form_inherit</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='move_ids_without_package']" position="before">
+                <button string="Barcode Quick-Add" type="object" name="action_open_barcode_wizard"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <record id="pi8_stock.codegc_product_create_wizard" model="ir.ui.view">
+        <field name="name">Vista Formulario PopUp-Producto Create Wizard</field>
+        <field name="model">pi8.stock.codegc.product.create.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field string="CodeGC" name="codes"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="Crear" class="oe_highlight" type="object" name="ensure_products_exist_from_text_codes" />
+                    <button string="Cancelar" special="cancel" />
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

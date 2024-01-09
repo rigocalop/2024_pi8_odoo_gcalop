@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="action_open_pi8_codegc_linea" model="ir.actions.act_window">
+        <field name="name">PI8.CodeGC - Catálogo de  Lineas</field>
+        <field name="res_model">pi8.codegc.linea</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <record id="action_open_pi8_codegc_precio" model="ir.actions.act_window">
+        <field name="name">PI8.CodeGC - Catálogo de Precios</field>
+        <field name="res_model">pi8.codegc.precio</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <record id="action_open_pi8_codegc_temporada" model="ir.actions.act_window">
+        <field name="name">PI8.CodeGC - Catálogo de Temporadas</field>
+        <field name="res_model">pi8.codegc.temporada</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="actopen__pi8_stock_codegc_product_create_wizard" model="ir.actions.act_window">
+        <field name="name">PI8.CodeGC - Crear productos</field>
+        <field name="res_model">pi8.stock.codegc.product.create.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_horizontal" name="PI8-CodeGC" parent="stock.menu_stock_root"/> <!-- ID del menú de Inventario aquí -->
+    <menuitem id="menuv_ertical__pi8_codegc_linea" name="Catálogo de Líneas" parent="menu_horizontal" action="action_open_pi8_codegc_linea" sequence="3"/>
+    <menuitem id="menuv_ertical__pi8_codegc_precio" name="Catálogo de Precios" parent="menu_horizontal" action="action_open_pi8_codegc_precio" sequence="4"/>
+    <menuitem id="menu_vertical__pi8_codegc_temporada" name="Catálogo de Temporadas" parent="menu_horizontal" action="action_open_pi8_codegc_temporada" sequence="5"/>
+    <menuitem id="menu_vertical__pi8_stock_codegc_product_create_wizard" name="Crear productos con CodeGC" parent="menu_horizontal" action="actopen__pi8_stock_codegc_product_create_wizard" sequence="6"/>
+</odoo>

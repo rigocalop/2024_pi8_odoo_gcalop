@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+acceso_codegc_linea_usuario,pi8.codegc.linea.usuario,model_pi8_codegc_linea,stock.group_stock_user,1,0,0,0
+acceso_codegc_precio_usuario,pi8.codegc.precio.usuario,model_pi8_codegc_precio,stock.group_stock_user,1,0,0,0
+acceso_codegc_temporada_usuario,pi8.codegc.temporada.usuario,model_pi8_codegc_temporada,stock.group_stock_user,1,0,0,0
+acceso_codegc_linea_administrador,pi8.codegc.linea.administrador,model_pi8_codegc_linea,stock.group_stock_manager,1,1,1,1
+acceso_codegc_precio_administrador,pi8.codegc.precio.administrador,model_pi8_codegc_precio,stock.group_stock_manager,1,1,1,1
+acceso_codegc_temporada_administrador,pi8.codegc.temporada.administrador,model_pi8_codegc_temporada,stock.group_stock_manager,1,1,1,1
+acceso_product_barcode_quickadd_wizard,pi8_stock.product_barcode_quickadd_wizard,model_pi8_stock_product_barcode_quickadd_wizard,base.group_user,1,1,1,0
+access_pi8_stock_codegc_product_create_wizard,pi8_stock.codegc_product_create_wizard,model_pi8_stock_codegc_product_create_wizard,stock.group_stock_manager,1,1,1,0
+pi8_stock.access_pi8_codegc,access_pi8_codegc,pi8_stock.model_pi8_codegc,base.group_user,1,0,0,0
