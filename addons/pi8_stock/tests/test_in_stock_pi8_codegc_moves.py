@@ -2,6 +2,7 @@ from odoo.tests.common import TransactionCase
 from odoo.tests import HttpCase, tagged
 import json
 from .._in_common.zlogger import ZLogger, logger_test_handler
+from .._in_models.in_stock_pi8_codegc__PartSerial import in_stock_pi8_codegc__PartSerial
 _logger = ZLogger.get_logger()
 
 
@@ -16,7 +17,7 @@ class test_in_stock_pi8_codegc_moves(TransactionCase):
         # 0A12233$a23456789z
         InStockPi8Codegc = self.env['in.stock.pi8.codegc']
         codigo = "A10101"
-        serial = InStockPi8Codegc.generate_serial(codigo,5)
+        serial = in_stock_pi8_codegc__PartSerial.generate(codigo,5)
         validar = InStockPi8Codegc.validar_serial(codigo, serial)
     
     @logger_test_handler
@@ -27,16 +28,16 @@ class test_in_stock_pi8_codegc_moves(TransactionCase):
         _logger.warning('test_generate_codes_list_from_text')
         self.env['in.stock.pi8.codegc.moves'].superfunc_codegc_moves__from_text_codes(text_codes)
         
+
 @tagged('-at_install', 'post_install')
 class test_in_stock_pi8_codegc_moves_controller(HttpCase):
-    
     @logger_test_handler
     def test_superapi_codegc_moves__from_text_codes(self):
         # Preparar datos de prueba
         InStockPi8Codegc = self.env['in.stock.pi8.codegc']
-        codigo = 'A11233'
-        codigo2 = 'A11234'
-        serial = InStockPi8Codegc.generate_serial(codigo,10)
+        codigo = '0A112333'
+        codigo2 = '0A11234X'
+        serial = in_stock_pi8_codegc__PartSerial.generate(codigo,10)
         text_codes = f'{codigo}${serial},{codigo2}${serial}'
         
         self.authenticate('admin', 'admin')

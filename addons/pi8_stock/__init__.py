@@ -18,6 +18,10 @@ from ._in_models.in_product import in_product
 from ._in_models.in_stock_picking import in_stock_picking
 from ._in_models.in_stock_move import in_stock_move
 from ._in_models.in_stock_pi8_codegc import in_stock_pi8_codegc
+from ._in_models.in_stock_pi8_codegc__PartCode import in_stock_pi8_codegc__PartCode
+from ._in_models.in_stock_pi8_codegc__PartSerial import in_stock_pi8_codegc__PartSerial
+
+
 from ._in_models.in_stock_pi8_codegc_moves import in_stock_pi8_codegc_moves
 from ._in_models.in_stock_pi8_codegc_moves import in_stock_pi8_codegc_moves_controller
 from .__tmp__.my_model  import MyModel

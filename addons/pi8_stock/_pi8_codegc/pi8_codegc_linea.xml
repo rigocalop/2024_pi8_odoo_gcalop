@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8"?>
 <odoo>
     <record id="pi8_codegc_linea_form" model="ir.ui.view">
         <field name="name">Formulario (PI8-CodeGC) de Lineas</field>
@@ -7,23 +7,14 @@
             <form>
                 <sheet>
                     <group>
-                        <field string="Clave.:" name="key"  required="1" default_focus="1"/>
+                        <field string="Clave.:" name="key" required="1" default_focus="1"/>
                         <field string="Departamento:" name="depto" required="1"/>
                         <field string="Nombre:" name="name" required="1"/>
+                        <field string="Seguimiento:" name="tracking" required="1"/>
                     </group>
                 </sheet>
             </form>
         </field>
     </record>
-    <record id="pi8_codegc_linea_tree" model="ir.ui.view">
-        <field name="name">Listado (PI8-CodeGC) de Lineas</field>
-        <field name="model">pi8.codegc.linea</field>
-        <field name="arch" type="xml">
-            <tree>
-                <field name="key"/>
-                <field name="name"/>
-                <field name="depto"/>
-            </tree>
-        </field>
-    </record>
+    <!-- Resto del código XML -->
 </odoo>

@@ -146,8 +146,9 @@ class ZLogger_CustomFormatter(logging.Formatter):
             level_name = "ERROR"
             is_empty_root = False
         elif levelno == LOG_LEVEL_DEBUG:
-            color_fore = ANSI_RED
-            level_name = "ERROR"
+            color_fore = ANSI_BLACK
+            color_back = ANSI_WHITE_BACKGROUND
+            level_name = "DEGUB"
             is_empty_root = False
         elif levelno == LOG_LEVEL_INFO:
             level_name = "INFO"

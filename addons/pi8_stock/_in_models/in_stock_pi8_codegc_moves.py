@@ -10,6 +10,8 @@ import odoo
 import json
 from .._in_common.zlogger import ZLogger, logger_api_handler, logger_function_handler, logger_superfunc_handler
 import json
+from .._in_models.in_stock_pi8_codegc__PartSerial import in_stock_pi8_codegc__PartSerial
+from .._in_models.in_stock_pi8_codegc__PartCode import in_stock_pi8_codegc__PartCode
 
 logging.setLoggerClass(ZLogger)
 _logger = logging.getLogger("testLogger")
@@ -76,7 +78,8 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
             'isvalid_serial': True,
             "iscreated_product": False,
             "iscreated_lot": False,
-            "text_code": single_text_code
+            "text_code": single_text_code,
+            "tracking": "none"
         }
         return to_return
 
@@ -185,12 +188,21 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                 # Actualizar el diccionario con la información obtenida
                 code_detail['codegc'] = codegc_info
                 serial = code_detail['serial']
-                if serial:
-                    isvalid_serial = Pi8_CodeGC.validate_serial_codigo(serial, default_code)
-                    code_detail['isvalid_serial'] = isvalid_serial
-                    code_detail['isvalid'] = isvalid_serial
-                    if not isvalid_serial:
-                        _logger.warning(f"El serial no es valido: {serial}")    
+                is_valid = True
+                is_valid_code = in_stock_pi8_codegc__PartCode.validate_verifier(default_code) 
+                is_valid_serial = True
+                
+                if serial: 
+                    is_valid_serial = in_stock_pi8_codegc__PartSerial.validate_serial_codigo(serial, default_code)
+                is_valid = is_valid_code and is_valid_serial
+                
+                if not is_valid:
+                    _logger.warning(f"El serial no es valido: {serial}") 
+                
+                # Actualizar el diccionario con los resultados de la validación
+                code_detail['isvalid'] = is_valid
+                code_detail['isvalid_code'] = is_valid_code
+                code_detail['isvalid_serial'] = is_valid_serial
             else:
                 code_detail['isvalid'] = False
                 code_detail['isvalid_code'] = False
@@ -217,7 +229,8 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
             'type': 'product',
             'sale_ok': True,
             'purchase_ok': True,
-            'available_in_pos': True
+            'available_in_pos': True,
+            'tracking': 'none'
         }
 
         # Agregar el campo 'barcode' si es la versión Enterprise
@@ -241,7 +254,10 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
             product_vals_to_create = []
 
             for move in valid_codegc_moves:
+                
                 product_vals = self._create_products__get_product_vals(move['default_code'])
+                tracking = move['codegc']['linea']['tracking']
+                product_vals['tracking'] = tracking
                 _logger.warning(f"Productos Agregado: {move['text_code']}")
                 product_vals_to_create.append(product_vals)
 
@@ -316,9 +332,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
         codegc_moves = self._update_codegc_moves__lot_ids_from_serial(codegc_moves)
         codegc_moves = self._update_codegc_moves__from_product_id(codegc_moves)
         codegc_moves = self._update_codegc_moves__codegc_info_and_validate(codegc_moves)
-        
         self._update_invalid_entries(codegc_moves, invalid_entries)
-        
         codegc_moves = self._update_codegc_moves__create_new_products(codegc_moves)
         codegc_moves = self._update_codegc_moves__create_new_stock_lots(codegc_moves)
         
@@ -334,5 +348,4 @@ class in_stock_pi8_codegc_moves_controller(http.Controller):
         codegc_moves, invalid_entries = request.env['in.stock.pi8.codegc.moves'].superfunc_codegc_moves__from_text_codes(text_codes)
         if invalid_entries: return BadRequest(f'{invalid_entries}')
         return json.dumps({'result': codegc_moves})
-
 

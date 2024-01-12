@@ -3,14 +3,116 @@ from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 import logging
 import odoo
+from odoo import http
+from odoo.http import request, Response
+
 from .._in_common.zlogger import ZLogger, logger_api_handler, logger_function_handler
 from inspect import currentframe
 import random
 logging.setLoggerClass(ZLogger)
 _logger = logging.getLogger("testLogger")
 
-    
 
+class CodeGC_PartSerial:
+    @staticmethod
+    def convert_to_base62(num):
+        characters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+        if num == 0:
+            return characters[0]
+        base = 62
+        result = ""
+        while num > 0:
+            result = characters[num % base] + result
+            num //= base
+        return result
+
+    @staticmethod
+    def convert_from_base62(base62_string):
+        characters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+        base = 62
+        length = len(base62_string)
+        num = 0
+
+        for i, char in enumerate(base62_string):
+            value = characters.index(char)
+            power = length - i - 1
+            num += value * (base ** power)
+        return num
+
+    @staticmethod
+    def add_verifier(serial_without_verifier):
+        # Convert the serial to its numeric representation using the base 62 conversion function
+        numeric_serial = CodeGC_PartSerial.convert_from_base62(serial_without_verifier)
+
+        # Calculate the remainder of the division of the number by 62
+        remainder = numeric_serial % 62
+
+        # Convert the remainder back to a base 62 character
+        verifier_character = CodeGC_PartSerial.convert_to_base62(remainder)
+
+        # Append the verification character to the end of the original serial
+        serial_with_verifier = serial_without_verifier + verifier_character
+
+        return serial_with_verifier
+
+    @staticmethod
+    @logger_function_handler
+    def validate_verifier(serial):
+        # Verify that the last character of the serial corresponds to the converted serial
+        last_serial_character = serial[-1]
+        last_character_value = CodeGC_PartSerial.convert_from_base62(last_serial_character)
+        numeric_serial = CodeGC_PartSerial.convert_from_base62(serial[:-1])
+        remainder = numeric_serial % 62
+        _logger.debug(f"validate_serial: {remainder} == {last_character_value}")
+        is_valid = int(remainder) == int(last_character_value)
+        if not is_valid:
+            _logger.warning(f"Invalid serial: {serial}")
+        return is_valid
+    
+    @staticmethod
+    @logger_function_handler
+    def validate_serial_codigo(serial, codigo):
+        # validate_codigo = in_stock_pi8_codegc.validate_codigo(codigo)
+        validate_serial = CodeGC_PartSerial.validate_verifier(serial)
+        if not validate_serial:
+            return False
+        
+        # Convertir el código a un número entero base 62
+        numero_codigo = CodeGC_PartSerial.convert_from_base62(codigo)
+
+        # Verificar el módulo del código con el penúltimo carácter del serial
+        penultimo_caracter_serial = serial[-2]
+        valor_penultimo_caracter = CodeGC_PartSerial.convert_from_base62(penultimo_caracter_serial)
+        residuo = numero_codigo % 62
+        _logger.debug(f"validate_serial_codigo: {residuo} == {valor_penultimo_caracter}")
+        is_valid = int(residuo) == int(valor_penultimo_caracter)
+        if not is_valid:
+            _logger.warning(f"Serial-Codigo inválido: {codigo}-{serial}")
+        return is_valid
+        
+    
+    @staticmethod
+    @logger_function_handler
+    def generate(codigo, longitud_serial):
+        if longitud_serial < 2:
+            raise ValueError("La longitud del serial debe ser al menos 2")
+
+        # Convertir el código a un número entero base 62
+        numero_codigo = CodeGC_PartSerial.convert_from_base62(codigo)
+
+        # Calcular el penúltimo carácter del serial
+        valor_penultimo_caracter = numero_codigo % 62
+        penultimo_caracter_serial = CodeGC_PartSerial.convert_to_base62(valor_penultimo_caracter)
+
+        # Generar la parte inicial del serial
+        caracteres = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        parte_inicial_serial = ''.join(random.choices(caracteres, k=longitud_serial-2))
+
+        # Calcular el último carácter del serial
+        serial_temporal = parte_inicial_serial + penultimo_caracter_serial
+        serial = CodeGC_PartSerial.add_verifier(serial_temporal)
+        return serial
+    
 
 
 class in_stock_pi8_codegc(models.TransientModel):
@@ -25,9 +127,10 @@ class in_stock_pi8_codegc(models.TransientModel):
             return {'linea_key': None, 'precio_key': None, 'temporada_key': None}
 
         # Dividir el código en segmentos
-        linea_key = "L" + codegc[0:2]
-        precio_key = "P" + codegc[2:4]
-        temporada_key = "T" + codegc[4:6]
+        catalog_key = codegc[0:1]
+        linea_key = catalog_key + "L" + codegc[1:3]
+        precio_key = catalog_key + "P" + codegc[3:5]
+        temporada_key = catalog_key + "T" + codegc[5:7]
 
         to_return = {
             'linea_key': linea_key,
@@ -62,81 +165,13 @@ class in_stock_pi8_codegc(models.TransientModel):
             _logger.warning(f"Código GC inválido o falta información relacionada: {codegc}")
         return to_return
 
-#region "GENERACION DE $SERIAL"
-    @staticmethod
-    def convertir_a_base62(num):
-        caracteres = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        if num == 0:
-            return caracteres[0]
-        base = 62
-        resultado = ""
-        while num > 0:
-            resultado = caracteres[num % base] + resultado
-            num //= base
-        return resultado
-
-    @staticmethod
-    def convertir_de_base62(cadena_base62):
-        caracteres = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        base = 62
-        longitud = len(cadena_base62)
-        num = 0
-
-        for i, char in enumerate(cadena_base62):
-            valor = caracteres.index(char)
-            potencia = longitud - i - 1
-            num += valor * (base ** potencia)
-        return num
-
-    @staticmethod
-    @logger_function_handler
-    def validate_serial(serial):
-        # Verificar que el último carácter del serial corresponde al serial convertido
-        ultimo_caracter_serial = serial[-1]
-        valor_ultimo_caracter = in_stock_pi8_codegc.convertir_de_base62(ultimo_caracter_serial)
-        numero_serial = in_stock_pi8_codegc.convertir_de_base62(serial[:-1])
-        residuo = numero_serial % 62
-        return int(residuo) == int(valor_ultimo_caracter)
     
-    @staticmethod
-    @logger_function_handler
-    def validate_serial_codigo(serial,codigo):
-        # Convertir el código a un número entero base 62
-        numero_codigo = in_stock_pi8_codegc.convertir_de_base62(codigo)
 
-        # Verificar el módulo del código con el penúltimo carácter del serial
-        penultimo_caracter_serial = serial[-2]
-        valor_penultimo_caracter = in_stock_pi8_codegc.convertir_de_base62(penultimo_caracter_serial)
-        if numero_codigo % 62 != valor_penultimo_caracter:
-            return False
-        return in_stock_pi8_codegc.validate_serial(serial)
+    
 
-    @staticmethod
-    @logger_function_handler
-    def generate_serial(codigo, longitud_serial):
-        if longitud_serial < 2:
-            raise ValueError("La longitud del serial debe ser al menos 2")
 
-        # Convertir el código a un número entero base 62
-        numero_codigo = in_stock_pi8_codegc.convertir_de_base62(codigo)
 
-        # Calcular el penúltimo carácter del serial
-        valor_penultimo_caracter = numero_codigo % 62
-        penultimo_caracter_serial = in_stock_pi8_codegc.convertir_a_base62(valor_penultimo_caracter)
 
-        # Generar la parte inicial del serial
-        caracteres = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        parte_inicial_serial = ''.join(random.choices(caracteres, k=longitud_serial-2))
-
-        # Calcular el último carácter del serial
-        serial_temporal = parte_inicial_serial + penultimo_caracter_serial
-        numero_serial = in_stock_pi8_codegc.convertir_de_base62(serial_temporal)
-        ultimo_caracter_serial = in_stock_pi8_codegc.convertir_a_base62(numero_serial % 62)
-
-        # Componer el serial completo
-        serial = serial_temporal + ultimo_caracter_serial
-        return serial
-#endregion
 
 
 
@@ -317,3 +352,45 @@ class in_stock_pi8_codegc(models.TransientModel):
             'product_id': product.id,
         })
         return new_lot
+    
+class in_stock_pi8_codegc_controller(http.Controller):
+    @http.route('/api/codegc/generate', type='http', methods=['GET'], auth='public', csrf=False)
+    @logger_api_handler
+    def superapi_codegc_generate(self, **post):
+        
+        qty = post.get('qty')
+        grupo = post.get('grupo')
+        codegc = post.get('codegc')
+        ll = post.get('linea')
+        tt = post.get('tmp')
+        pp = post.get('tmp')
+        precio = post.get('precio')
+
+        if precio: 
+            pp= self.env["pi8.codegc.precio"].find_key_by_group_and_value(grupo, precio)  
+            pp= pp[2:] 
+
+        codegc = ll + tt + pp
+        if not ll or not tt or not pp:
+            raise UserError("CodeGC es invalido: {codegc}")
+        # elif:
+        #    is_valid = CodeGC_PartCode.validate(codegc)
+            
+            
+                            
+                            
+        
+            
+
+                    
+        info_codegc = in_stock_pi8_codegc.get_codegc(codegc)
+        tracking = info_codegc['linea']['tracking']
+        serial = None
+        if tracking == 'serial':
+            serial == CodeGC_PartSerial.generate(codegc, 9)
+            return codegc + '$' + serial
+        elif tracking == 'lot':
+            serial = CodeGC_PartSerial.generate(codegc, 6)
+            return codegc + '&' + serial
+        elif tracking == 'none':
+            return codegc
