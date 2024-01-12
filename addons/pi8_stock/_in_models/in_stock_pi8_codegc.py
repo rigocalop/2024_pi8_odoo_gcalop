@@ -3,11 +3,14 @@ from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 import logging
 import odoo
-
+from .._in_common.zlogger import ZLogger, logger_api_handler, logger_function_handler
 from inspect import currentframe
-from .._in_common.zlogger import ZLogger
+import random
 logging.setLoggerClass(ZLogger)
 _logger = logging.getLogger("testLogger")
+
+    
+
 
 
 class in_stock_pi8_codegc(models.TransientModel):
@@ -15,13 +18,8 @@ class in_stock_pi8_codegc(models.TransientModel):
     _description = 'Modelo Base GCALOP'
     
     @staticmethod
+    @logger_function_handler
     def _get_codegc__get_keys(codegc):
-        _logger.fini(currentframe().f_code.co_qualname, codegc=codegc)
-        """
-        Extrae las claves de 'linea', 'precio', y 'temporada' del código 'codegc'.
-        :param codegc: El código del producto.
-        :return: Diccionario con las claves de línea, precio y temporada.
-        """
         if len(codegc) < 6:
             _logger.info("Código GC demasiado corto: %s", codegc)
             return {'linea_key': None, 'precio_key': None, 'temporada_key': None}
@@ -36,18 +34,11 @@ class in_stock_pi8_codegc(models.TransientModel):
             'precio_key': precio_key,
             'temporada_key': temporada_key
         }
-        _logger.fend(currentframe().f_code.co_qualname, to_return=to_return)
         return to_return
 
     @api.model
+    @logger_function_handler
     def get_codegc(self, codegc):
-        _logger.fini(currentframe().f_code.co_qualname, codegc=codegc)
-        """
-        Extrae y valida las partes de un código GC, incluyendo la línea, el precio y la temporada.
-        :param codegc: El código GC del producto.
-        :return: Un diccionario con la información validada de línea, precio, temporada,
-                o None si el código GC es inválido.
-        """
         # Extraer las claves de línea, precio y temporada del código GC
         claves = in_stock_pi8_codegc._get_codegc__get_keys(codegc)
         
@@ -69,17 +60,88 @@ class in_stock_pi8_codegc(models.TransientModel):
             }
         else:
             _logger.warning(f"Código GC inválido o falta información relacionada: {codegc}")
-        _logger.fend(currentframe().f_code.co_qualname,to_return)
         return to_return
+
+#region "GENERACION DE $SERIAL"
+    @staticmethod
+    def convertir_a_base62(num):
+        caracteres = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        if num == 0:
+            return caracteres[0]
+        base = 62
+        resultado = ""
+        while num > 0:
+            resultado = caracteres[num % base] + resultado
+            num //= base
+        return resultado
+
+    @staticmethod
+    def convertir_de_base62(cadena_base62):
+        caracteres = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        base = 62
+        longitud = len(cadena_base62)
+        num = 0
+
+        for i, char in enumerate(cadena_base62):
+            valor = caracteres.index(char)
+            potencia = longitud - i - 1
+            num += valor * (base ** potencia)
+        return num
+
+    @staticmethod
+    @logger_function_handler
+    def validate_serial(serial):
+        # Verificar que el último carácter del serial corresponde al serial convertido
+        ultimo_caracter_serial = serial[-1]
+        valor_ultimo_caracter = in_stock_pi8_codegc.convertir_de_base62(ultimo_caracter_serial)
+        numero_serial = in_stock_pi8_codegc.convertir_de_base62(serial[:-1])
+        residuo = numero_serial % 62
+        return int(residuo) == int(valor_ultimo_caracter)
     
+    @staticmethod
+    @logger_function_handler
+    def validate_serial_codigo(serial,codigo):
+        # Convertir el código a un número entero base 62
+        numero_codigo = in_stock_pi8_codegc.convertir_de_base62(codigo)
+
+        # Verificar el módulo del código con el penúltimo carácter del serial
+        penultimo_caracter_serial = serial[-2]
+        valor_penultimo_caracter = in_stock_pi8_codegc.convertir_de_base62(penultimo_caracter_serial)
+        if numero_codigo % 62 != valor_penultimo_caracter:
+            return False
+        return in_stock_pi8_codegc.validate_serial(serial)
+
+    @staticmethod
+    @logger_function_handler
+    def generate_serial(codigo, longitud_serial):
+        if longitud_serial < 2:
+            raise ValueError("La longitud del serial debe ser al menos 2")
+
+        # Convertir el código a un número entero base 62
+        numero_codigo = in_stock_pi8_codegc.convertir_de_base62(codigo)
+
+        # Calcular el penúltimo carácter del serial
+        valor_penultimo_caracter = numero_codigo % 62
+        penultimo_caracter_serial = in_stock_pi8_codegc.convertir_a_base62(valor_penultimo_caracter)
+
+        # Generar la parte inicial del serial
+        caracteres = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        parte_inicial_serial = ''.join(random.choices(caracteres, k=longitud_serial-2))
+
+        # Calcular el último carácter del serial
+        serial_temporal = parte_inicial_serial + penultimo_caracter_serial
+        numero_serial = in_stock_pi8_codegc.convertir_de_base62(serial_temporal)
+        ultimo_caracter_serial = in_stock_pi8_codegc.convertir_a_base62(numero_serial % 62)
+
+        # Componer el serial completo
+        serial = serial_temporal + ultimo_caracter_serial
+        return serial
+#endregion
+
+
+
 #FUNCIONES A DESCONTINUAR
     def extraer_default_codes_unicos(codes_details):
-        """
-        Extrae los default_code únicos de los elementos en codes_details que no tienen un product_id y codegc_isvalid es True.
-
-        :param codes_details: Lista de diccionarios con las claves 'default_code', 'qty', 'serial', 'lot_id', 'product_id', 'codegc', 'codegc_isvalid'.
-        :return: Conjunto de default_code únicos sin product_id y con codegc_isvalid True.
-        """
         default_codes = {detail['default_code'] for detail in codes_details if not detail.get('product_id') and detail.get('codegc_isvalid') == True}
         return default_codes
 
@@ -87,10 +149,6 @@ class in_stock_pi8_codegc(models.TransientModel):
         
     @api.model
     def ensure_products_exist_from_barcodes(self, barcodes):
-        """
-        Crea productos para los códigos de barras faltantes.
-        :param barcodes: Lista de códigos de barras.
-        """
         missing_barcodes = self.env['in.product'].find_missing_barcodes(barcodes)
         for codegc in missing_barcodes:
             try:
@@ -99,17 +157,6 @@ class in_stock_pi8_codegc(models.TransientModel):
             except Exception as e:
                 _logger.error("Error al crear el producto: %s", str(e))
                 raise UserError(_("Error al crear el producto: %s") % str(e))
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     
     
     @api.model        

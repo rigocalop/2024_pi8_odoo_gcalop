@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from ._in_common.sy_codes import sy_codes
 from ._in_common.zlogger import ZLogger
-from ._in_common.zlogger_formatter import ZLogger_CustomFormatter
+#from ._in_common.zlogger_formatter import ZLogger_CustomFormatter
 
 
 from ._pi8_codegc.pi8_codegc_linea import pi8_codegc_linea
