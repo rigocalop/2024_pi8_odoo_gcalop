@@ -37,6 +37,23 @@ class in_stock_pi8_codegc(models.TransientModel):
             'temporada_key': temporada_key
         }
         return to_return
+    @api.model
+    @staticmethod
+    def filter_dictionary_by_keys(keys_list, original_dict):
+        """
+        Filtra un diccionario, dejando solo las claves especificadas en keys_list.
+
+        :param keys_list: Una cadena de texto con claves separadas por comas.
+        :param original_dict: El diccionario original a filtrar.
+        :return: Un nuevo diccionario con solo las claves especificadas.
+        """
+        # Convertimos la cadena de claves en una lista, separando por comas y eliminando espacios en blanco
+        keys = [key.strip() for key in keys_list.split(',')]
+
+        # Creamos un nuevo diccionario que contenga solo las claves de interés
+        filtered_dict = {key: original_dict[key] for key in keys if key in original_dict}
+
+        return filtered_dict
 
     @api.model
     @zlog.function_handler
@@ -58,8 +75,14 @@ class in_stock_pi8_codegc(models.TransientModel):
         precio = self.env['pi8.codegc.precio'].ckfield(claves['precio_key'])
         temporada = self.env['pi8.codegc.temporada'].ckfield(claves['temporada_key'])
         
+        
+        
         to_return = None
         if linea and precio and temporada:
+            linea = self.filter_dictionary_by_keys('key,name,tracking', linea)
+            precio = self.filter_dictionary_by_keys('key,name,value', precio)
+            temporada = self.filter_dictionary_by_keys('key,name', temporada)
+            
             logger.info(f"Código GC válido: {codegc}")
             to_return = {
                 'linea': linea,

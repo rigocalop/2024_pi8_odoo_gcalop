@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import json
 from odoo import api, models
 
+
 def cache_model_search(func):
     cache = {}
     last_reset_time = datetime.now()

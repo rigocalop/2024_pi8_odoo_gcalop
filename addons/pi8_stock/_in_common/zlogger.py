@@ -153,7 +153,6 @@ def function_handler(func):
                 ZLogger_CustomFormatter.RUN_LEVEL = run_level - 1
             raise Exception(response_content)
     return wrapper
-    
 
 def superfunc_handler(func):
     def wrapper(*args, **kwargs):
