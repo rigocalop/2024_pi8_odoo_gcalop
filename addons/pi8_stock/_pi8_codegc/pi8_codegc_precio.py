@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models
+from .._in_models.bs_model import cache_model_search
 
 class pi8_codegc_precio(models.Model):
     _name = "pi8.codegc.precio"
@@ -10,13 +11,6 @@ class pi8_codegc_precio(models.Model):
     # group = fields.Char(string='Grupo', index=True, size=1)
     _sql_constraints = [('key_unique', 'UNIQUE(key)', 'La clave debe ser única')]
     
-    @api.model
-    def ckfield(self, key, field_name=None):
-        return self.env['bs.model'].ckfield(self, key, field_name)    
-    
-    @api.model
-    def find_key_by_group_and_value(self, group, value):
-        # Buscar un registro que coincida con el grupo y el valor dados
-        # record = self.search([('group', '=', group), ('value', '=', value)], limit=1)
-        return '0P11'
-        return record.key if record else None
+    @cache_model_search
+    def ckfield(self, key):
+        pass

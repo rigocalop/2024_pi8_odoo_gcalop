@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models
+from .._in_models.bs_model import cache_model_search
 
 class pi8_codegc_temporada(models.Model):
     _name = "pi8.codegc.temporada"
@@ -10,6 +11,7 @@ class pi8_codegc_temporada(models.Model):
     month = fields.Integer(string='Mes', index=True, required=True)
     _sql_constraints = [('key_unique', 'UNIQUE(key)', 'La clave debe ser única')]
     
-    @api.model
-    def ckfield(self, key, field_name=None):
-        return self.env['bs.model'].ckfield(self, key, field_name)       
+    @cache_model_search
+    def ckfield(self, key):
+        pass
+        

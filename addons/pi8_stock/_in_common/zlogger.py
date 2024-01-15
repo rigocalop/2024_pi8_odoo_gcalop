@@ -3,6 +3,7 @@ from odoo.http import request, Response
 from werkzeug.exceptions import BadRequest, NotFound
 import json
 import traceback
+import functools
 from .zlogger_formatter import *
 
     
@@ -91,7 +92,7 @@ class ZLogger(logging.Logger):
             self._log(LOG_LEVEL_VALUE, msg, args, **kwargs)
 #endregion
 
-def logger_api_handler(func):
+def api_handler(func):
     def wrapper(*args, **kwargs):
         ZLogger_CustomFormatter.RUN_LEVEL += 1  
         run_level = ZLogger_CustomFormatter.RUN_LEVEL
@@ -125,38 +126,7 @@ def logger_api_handler(func):
             return request.make_response(response_content, headers=[('Content-Type', 'application/json')], status=500)
     return wrapper
 
-# def logger_function_handler(show_traceback=False):
-#     def decorator(func):
-#         def wrapper(*args, **kwargs):
-#             ZLogger_CustomFormatter.RUN_LEVEL += 1  
-#             run_level = ZLogger_CustomFormatter.RUN_LEVEL
-#             try:
-#                 _logger = ZLogger.get_logger()
-#                 _logger.func_ini(f'Function: ({func.__name__}). {func.__module__}', *args, **kwargs)
-#                 result = func(*args, **kwargs)
-#                 ZLogger_CustomFormatter.RUN_LEVEL = run_level
-#                 _logger.returns(f'Function: {func.__module__} . {func.__name__}', to_return_function=result)
-#                 _logger.func_end(f'Function: ({func.__name__}). {func.__module__}')
-#                 ZLogger_CustomFormatter.RUN_LEVEL = run_level - 1
-#                 return result
-#             except Exception as e:
-#                 ZLogger_CustomFormatter.RUN_LEVEL = run_level
-#                 error_message = f'Error durante la ejecución de la función: {str(e)}'
-#                 show_traceback = True
-#                 if show_traceback:
-#                     error_traceback = traceback.format_exc()
-#                     error_message += f"\n{error_traceback}"
-#                     response_content = json.dumps({'error': str(e), 'traceback': error_traceback})
-#                 else:
-#                     response_content = json.dumps({'error': str(e)})
-#                     _logger.error(error_message)
-#                     ZLogger_CustomFormatter.RUN_LEVEL = run_level - 1
-#                 raise Exception(response_content)
-#         return wrapper
-#     return decorator
-
-
-def logger_function_handler(func):
+def function_handler(func):
     def wrapper(*args, **kwargs):
         ZLogger_CustomFormatter.RUN_LEVEL += 1  
         run_level = ZLogger_CustomFormatter.RUN_LEVEL
@@ -185,7 +155,7 @@ def logger_function_handler(func):
     return wrapper
     
 
-def logger_superfunc_handler(func):
+def superfunc_handler(func):
     def wrapper(*args, **kwargs):
         ZLogger_CustomFormatter.RUN_LEVEL += 1  
         run_level = ZLogger_CustomFormatter.RUN_LEVEL
@@ -207,7 +177,7 @@ def logger_superfunc_handler(func):
             raise Exception(response_content)
     return wrapper
 
-def logger_test_handler(func):
+def test_handler(func):
     def wrapper(*args, **kwargs):
         ZLogger_CustomFormatter.RUN_LEVEL += 1  
         run_level = ZLogger_CustomFormatter.RUN_LEVEL

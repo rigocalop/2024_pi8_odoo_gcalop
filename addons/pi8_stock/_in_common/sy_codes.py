@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
-import logging
 import re
-import odoo
-import sys
+from ..pi8 import zlog
 
 class sy_codes(models.AbstractModel):
     _name = 'sy.codes'
