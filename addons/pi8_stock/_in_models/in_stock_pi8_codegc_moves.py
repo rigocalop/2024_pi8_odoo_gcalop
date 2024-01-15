@@ -6,7 +6,8 @@ from werkzeug.exceptions import BadRequest, NotFound
 import re
 import odoo
 import json
-from .. import pi8 as PI8
+# from .. import pi8 as PI8
+from ..pi8 import zlog, logger, sx, sy
 
 
 class in_stock_pi8_codegc_moves(models.AbstractModel):
@@ -14,48 +15,11 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
     _description = 'Modelo Base GCALOP'
 
 #region "procedimientos atomicos"
-    @staticmethod
-    @PI8.zlog.function_handler
-    def _parse_to_moves_codegc__from_text_codes__clean_text_codes(text_codes):
-        # Reemplaza diferentes separadores por un único separador (por ejemplo, una coma)
-        text_codes = re.sub(r'[\r\n]+', ',', text_codes)
-        text_codes = re.sub(r',+', ',', text_codes).strip()
-        return text_codes
-    
-    @staticmethod
-    @PI8.zlog.function_handler
-    def _parse_to_moves_codegc__from_text_codes__single_text_code(single_text_code):
+    @classmethod
+    @zlog.function_handler
+    def _parse_to_moves_codegc__from_text_codes__single_text_code(cls, single_text_code):
         # Initialize default values
-        default_code = None
-        qty = 1.0  # Default quantity
-        serial = None
-        lot_id = None  # Initialize as None as it's not part of text_code
-        product_id = None  # Initialize as None as it's not part of text_code
-
-        
-        # Splitting the string based on the presence of '$' and '*'
-        if '$' in single_text_code:
-            parts = single_text_code.split('$')
-            default_code = parts[0].strip()
-            rest = parts[1]
-
-            if '*' in rest:
-                serial, quantity_str = rest.split('*')
-                qty = float(quantity_str.strip()) if quantity_str else 1.0
-            else:
-                serial = rest.strip()
-        else:
-            if '*' in single_text_code:
-                default_code, quantity_str = single_text_code.split('*')
-                default_code = default_code.strip()
-                qty = float(quantity_str.strip()) if quantity_str else 1.0
-                
-                
-            else:
-                default_code = single_text_code.strip()
-
-        # Stripping any whitespace from the serial
-        serial = serial.strip() if serial else None
+        default_code, qty, serial = sy.codegc.parse_product_details(single_text_code,"$","*") 
         
         # Return as a dictionary
         to_return = {	
@@ -75,11 +39,10 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
         }
         return to_return
 
-    @staticmethod
-    @PI8.zlog.function_handler
-    def _parse_to_codegc_moves__from_text_codes(text_codes, **kwargs):
+    @classmethod
+    @zlog.function_handler
+    def _parse_to_codegc_moves__from_text_codes(cls, text_codes, **kwargs):
         # Limpiar y preparar los códigos de texto
-        text_codes = in_stock_pi8_codegc_moves._parse_to_moves_codegc__from_text_codes__clean_text_codes(text_codes)
         codegc_moves = []
         invalid_entries = []
         for entry in text_codes.split(','):
@@ -88,7 +51,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
             # Parse each code to extract details
             code_details = None
             try:
-                code_details =  in_stock_pi8_codegc_moves._parse_to_moves_codegc__from_text_codes__single_text_code(entry)
+                code_details =  cls._parse_to_moves_codegc__from_text_codes__single_text_code(entry)
                 if not code_details['default_code'] and not code_details['serial']:
                     invalid_entries.append({'entry': entry, 'description': 'Invalid entry'})
                 
@@ -100,7 +63,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
 #endregion
 
 #region "Actualización de codegc_moves"
-    @PI8.zlog.function_handler
+    @zlog.function_handler
     def _update_codegc_moves__product_ids_from_default_code(self, codegc_moves):
         Product = self.env['product.product']
 
@@ -119,11 +82,11 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
             if code_detail['default_code'] in product_map:
                 code_detail['product_id'] = product_map[code_detail['default_code']]
             else:
-                PI8.logger.warning(f"Producto no encontrado con default_code: {code_detail['default_code']}")
+                logger.warning(f"Producto no encontrado con default_code: {code_detail['default_code']}")
         return codegc_moves
 
     @api.model
-    @PI8.zlog.function_handler
+    @zlog.function_handler
     def _update_codegc_moves__lot_ids_from_serial(self, codegc_moves):
         StockProductionLot = self.env['stock.lot']
 
@@ -143,11 +106,11 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                 code_detail['lot_id'] = lot_id
                 code_detail['product_id'] = product_id
             else:
-                PI8.logger.warning(f"Lote no encontrado con serial: {code_detail['serial']}")
+                logger.warning(f"Lote no encontrado con serial: {code_detail['serial']}")
         return codegc_moves
 
     @api.model
-    @PI8.zlog.function_handler
+    @zlog.function_handler
     def _update_codegc_moves__from_product_id(self, codegc_moves):
         Product = self.env['product.product']
 
@@ -167,7 +130,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                     detail['default_code'] = product_map[detail['product_id']]
         return codegc_moves
     
-    @PI8.zlog.function_handler
+    @zlog.function_handler
     def _update_codegc_moves__codegc_info_and_validate(self, codegc_moves):
         for code_detail in codegc_moves:
             default_code = code_detail['default_code']
@@ -178,15 +141,15 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                 code_detail['codegc'] = codegc_info
                 serial = code_detail['serial']
                 is_valid = True
-                is_valid_code = PI8.sx.base36.validate(default_code)
+                is_valid_code = sx.base36.validate(default_code)
                 is_valid_serial = True
                 
                 if serial: 
-                    is_valid_serial = PI8.sy.codegc.validate_serial(default_code, serial)
+                    is_valid_serial = sy.codegc.validate_serial(default_code, serial)
                 is_valid = is_valid_code and is_valid_serial
                 
                 if not is_valid:
-                    PI8.logger.warning(f"El serial no es valido: {serial}") 
+                    logger.warning(f"El serial no es valido: {serial}") 
                 
                 # Actualizar el diccionario con los resultados de la validación
                 code_detail['isvalid'] = is_valid
@@ -195,16 +158,16 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
             else:
                 code_detail['isvalid'] = False
                 code_detail['isvalid_code'] = False
-                PI8.logger.warning(f"No se encontró información para el código GC: {default_code}")
+                logger.warning(f"No se encontró información para el código GC: {default_code}")
         return codegc_moves
 #endregion
 
-    @PI8.zlog.function_handler
+    @zlog.function_handler
     def _create_products__get_product_vals(self, codegc):
         # Validar el código del producto
         codegc_info = self.env["in.stock.pi8.codegc"].get_codegc(codegc)
         if not codegc_info:
-            PI8.logger.warning(f"Validación fallida para el código: {codegc}")
+            logger.warning(f"Validación fallida para el código: {codegc}")
             raise UserError(_("Código del producto inválido o falta información relacionada."))
 
         # Crear el diccionario de valores del producto
@@ -225,7 +188,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
             product_vals['barcode'] = codegc
         return product_vals
     
-    @PI8.zlog.function_handler
+    @zlog.function_handler
     def _update_codegc_moves__create_new_products(self, codegc_moves):
         created_products = []
         # Filtrar elementos que cumplan con la condición 'isvalid=True' y 'product_id=None'
@@ -244,7 +207,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                 product_vals = self._create_products__get_product_vals(move['default_code'])
                 tracking = move['codegc']['linea']['tracking']
                 product_vals['tracking'] = tracking
-                PI8.logger.warning(f"Productos Agregado: {move['text_code']}")
+                logger.warning(f"Productos Agregado: {move['text_code']}")
                 product_vals_to_create.append(product_vals)
 
             # Realizar una inserción masiva de productos en la base de datos
@@ -259,7 +222,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                     move['iscreated_product'] = True
         return codegc_moves
     
-    @PI8.zlog.function_handler
+    @zlog.function_handler
     def _update_codegc_moves__create_new_stock_lots(self, codegc_moves):
         created_products = []
         # Filtrar elementos que cumplan con la condición 'isvalid=True' y 'product_id=None'
@@ -279,7 +242,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                     'product_id': move['product_id']
                 }
                 lots_to_create.append(new_lot)
-                PI8.logger.warning(f"Product Lot Agregado: {move['text_code']}")
+                logger.warning(f"Product Lot Agregado: {move['text_code']}")
 
 
             # Realizar una inserción masiva de productos en la base de datos
@@ -302,12 +265,14 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                     description = 'Invalid code'
                 elif move.get('isvalid_serial') == False:
                     description = 'Invalid serial'
-                PI8.logger.warning(f"Invalid Entry: {move['text_code']} - {description}")
+                logger.warning(f"Invalid Entry: {move['text_code']} - {description}")
                 invalid_entries.append({'entry': move, 'description': description})
     
-    @PI8.zlog.superfunc_handler
+    @zlog.superfunc_handler
     def superfunc_codegc_moves__from_text_codes(self, text_codes, **kwargs):
         # Extraer detalles básicos de cada código
+        text_codes = sy.codegc.parse_clean_text_codes(text_codes)
+        
         codegc_moves, invalid_entries = in_stock_pi8_codegc_moves._parse_to_codegc_moves__from_text_codes(text_codes)
 
         # Actualizar información de product_id y lot_id
@@ -325,7 +290,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
 
 class in_stock_pi8_codegc_moves_controller(http.Controller):
     @http.route('/api/codegc/moves', type='http', methods=['POST'], auth='public', csrf=False)
-    @PI8.zlog.api_handler
+    @zlog.api_handler
     def superapi_codegc_moves__from_text_codes(self, **post):
         text_codes = json.loads(request.httprequest.data).get('text_codes')
         codegc_moves, invalid_entries = request.env['in.stock.pi8.codegc.moves'].superfunc_codegc_moves__from_text_codes(text_codes)
