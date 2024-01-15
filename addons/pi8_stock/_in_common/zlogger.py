@@ -11,6 +11,7 @@ class ZLogger(logging.Logger):
     def __init__(self, name, level=logging.NOTSET):
         super().__init__(name, level)
 
+    zlog = None
     @staticmethod
     def get_logger():
         logger = logging.getLogger("testLogger")
@@ -50,7 +51,7 @@ class ZLogger(logging.Logger):
         for handler in root_logger.handlers:
             handler.setLevel(ZLogger._original_root_level)
     
-    def log_common(self, level, msg, modify_run_level, *args, **kwargs):
+    def log_common(self, level, msg, modify_run_level = 0, *args, **kwargs):
         ZLogger.disable_root_logger()   # Desactivar el logger raíz
         ZLogger_CustomFormatter.RUN_LEVEL += modify_run_level  # Modificar RUN_LEVEL_TEST según sea necesario
         if self.isEnabledFor(level): # Log si el nivel es habilitado
@@ -58,21 +59,25 @@ class ZLogger(logging.Logger):
         
         if (args != None): ZLogger_CustomFormatter.log_common__args(self, *args)
         if (kwargs != None): ZLogger_CustomFormatter.log_common__fkwargs(self, **kwargs)
-        
+        ZLogger.enable_root_logger()   # Desactivar el logger raíz
         
 #region "Metodos de log"
-    def func_ini(self, msg, *args, **kwargs):
-        self.log_common(LOG_LEVEL_FINI, msg, 0, *args, **kwargs)
-    def func_end(self, msg, *args, **kwargs):
-        self.log_common(LOG_LEVEL_FEND, msg, 0, *args, **kwargs)
+    def func_ini(self, msg, resalt=False, *args, **kwargs):
+        if (resalt): self.log_common(LOG_LEVEL_FINI_RESALT, msg, 0, *args, **kwargs)
+        else: self.log_common(LOG_LEVEL_FINI, msg, 0, *args, **kwargs)
+    def func_end(self, msg, resalt=False, *args, **kwargs):
+        if (resalt): self.log_common(LOG_LEVEL_FEND_RESALT, msg, 0, *args, **kwargs)
+        else: self.log_common(LOG_LEVEL_FEND, msg, 0, *args, **kwargs)
     def superfunc_ini(self, msg, *args, **kwargs):
         self.log_common(LOG_LEVEL_FINI_SUPER, msg, 0, *args, **kwargs)
     def superfunc_end(self, msg, *args, **kwargs):
         self.log_common(LOG_LEVEL_FEND_SUPER, msg, 0, *args, **kwargs)        
-    def test_ini(self, msg):
-        self.log_common(LOG_LEVEL_FINI_TEST, msg, 0)
-    def test_end(self, msg, *args, **kwargs):
-        self.log_common(LOG_LEVEL_FEND_TEST, msg, 0, *args, **kwargs)
+    def test_ini(self, msg, resalt=False):
+        if (resalt): self.log_common(LOG_LEVEL_FINI_RESALT, msg)
+        else: self.log_common(LOG_LEVEL_FINI_TEST, msg, 0)        
+    def test_end(self, msg, resalt=False):
+        if (resalt): self.log_common(LOG_LEVEL_FEND_RESALT, msg)
+        else: self.log_common(LOG_LEVEL_FEND_TEST, msg, 0)        
     def api_ini(self, msg, *args, **kwargs):
         self.log_common(LOG_LEVEL_FINI_API, msg, 0, args, **kwargs)
     def api_end(self, msg, *args, **kwargs):
@@ -90,6 +95,9 @@ class ZLogger(logging.Logger):
     def fvalue(self, msg, *args, **kwargs):
         if self.isEnabledFor(LOG_LEVEL_VALUE):
             self._log(LOG_LEVEL_VALUE, msg, args, **kwargs)
+    def mark(self, msg, *args, **kwargs):
+        if self.level == 100:
+            self._log(LOG_LEVEL_MARK, msg, args, **kwargs)            
 #endregion
 
 def api_handler(func):
@@ -126,13 +134,13 @@ def api_handler(func):
             return request.make_response(response_content, headers=[('Content-Type', 'application/json')], status=500)
     return wrapper
 
-def function_handler(func):
+def hlog_function(func):
     def wrapper(*args, **kwargs):
         ZLogger_CustomFormatter.RUN_LEVEL += 1  
         run_level = ZLogger_CustomFormatter.RUN_LEVEL
         try:
                 _logger = ZLogger.get_logger()
-                _logger.func_ini(f'Function: ({func.__name__}). {func.__module__}', *args, **kwargs)
+                _logger.func_ini(f'Function: ({func.__name__}). {func.__module__}', False, *args, **kwargs)
                 result = func(*args, **kwargs)
                 ZLogger_CustomFormatter.RUN_LEVEL = run_level
                 _logger.returns(f'Function: {func.__module__} . {func.__name__}', to_return_function=result)
@@ -154,7 +162,7 @@ def function_handler(func):
             raise Exception(response_content)
     return wrapper
 
-def superfunc_handler(func):
+def hlog_superfunc(func):
     def wrapper(*args, **kwargs):
         ZLogger_CustomFormatter.RUN_LEVEL += 1  
         run_level = ZLogger_CustomFormatter.RUN_LEVEL
@@ -176,7 +184,7 @@ def superfunc_handler(func):
             raise Exception(response_content)
     return wrapper
 
-def test_handler(func):
+def hlog_test(func):
     def wrapper(*args, **kwargs):
         ZLogger_CustomFormatter.RUN_LEVEL += 1  
         run_level = ZLogger_CustomFormatter.RUN_LEVEL
@@ -198,3 +206,79 @@ def test_handler(func):
             ZLogger_CustomFormatter.RUN_LEVEL = run_level - 1
             raise Exception(response_content)
     return wrapper
+
+def hlog_atomic(enable=False, traceback=False, resalt = False, demo_return=None):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            ZLogger.disable_root_logger()
+            _logger = ZLogger.get_logger()
+            ZLogger_CustomFormatter.RUN_LEVEL += 1  
+            run_level = ZLogger_CustomFormatter.RUN_LEVEL
+            original_log_level = _logger.level  # Guardar el nivel de log original
+            try:
+                if enable:
+                    _logger.setLevel(0)  # Desactivar el logger raíz
+                    _logger = ZLogger.get_logger()
+                    _logger.func_ini(f'Atomic: ({func.__name__}). {func.__module__}', resalt, *args, **kwargs)
+                
+                if enable and demo_return:
+                    _logger.info(f"Demo Return: {demo_return}")
+                    result = demo_return
+                else:
+                    result = func(*args, **kwargs)
+
+                ZLogger_CustomFormatter.RUN_LEVEL = run_level
+                if enable:
+                    _logger.setLevel(original_log_level)  # Desactivar el logger raíz
+                    _logger.returns(f'Atomic: {func.__module__} . {func.__name__}', to_return_function=result)
+                    _logger.func_end(f'Atomic: ({func.__name__}). {func.__module__}', resalt)
+                ZLogger_CustomFormatter.RUN_LEVEL = run_level - 1
+                return result
+            except Exception as e:
+                ZLogger_CustomFormatter.RUN_LEVEL = run_level
+                error_message = f'Atomic ERROR: ({func.__name__}). {func.__module__} Error durante la ejecución de la función: {str(e)}'
+                if traceback:
+                    error_traceback = traceback.format_exc()
+                    error_message += f"\n{error_traceback}"
+                    response_content = json.dumps({'error': str(e), 'traceback': error_traceback})
+                else:
+                    response_content = json.dumps({'error': str(e)})
+                    if enable:
+                        _logger.setLevel(original_log_level)  # Desactivar el logger raíz
+                        _logger.error(error_message)
+                    ZLogger_CustomFormatter.RUN_LEVEL = run_level - 1
+                raise Exception(response_content)
+        return wrapper
+    return decorator
+
+        
+def hlog_test_api(auth_user=None, auth_password=None, resalt = False):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            self = args[0]
+            if auth_user:
+                self.authenticate(auth_user, auth_password)
+            self.headers = {
+                'Content-Type': 'application/json',
+            }
+            
+            ZLogger_CustomFormatter.RUN_LEVEL += 1  
+            run_level = ZLogger_CustomFormatter.RUN_LEVEL
+            to_return = None
+            try:
+                _logger = ZLogger.get_logger()
+                _logger.test_ini(f'TEST.API ejecutada: ({func.__name__}) . {func.__module__}', resalt)
+                result = func(*args, **kwargs)
+                
+                ZLogger_CustomFormatter.RUN_LEVEL = run_level
+                _logger.test_end(f'TEST.API ejecutada: ({func.__name__}) . {func.__module__}', resalt)
+                ZLogger_CustomFormatter.RUN_LEVEL = run_level - 1
+                return result
+            except Exception as e:
+                ZLogger_CustomFormatter.RUN_LEVEL = run_level
+                _logger.error(f'Error durante la ejecución de la API: {str(e)}')
+                response_content = json.dumps({'error': str(e)})
+                ZLogger_CustomFormatter.RUN_LEVEL = run_level - 1
+                raise Exception(response_content)
+        return wrapper
+    return decorator

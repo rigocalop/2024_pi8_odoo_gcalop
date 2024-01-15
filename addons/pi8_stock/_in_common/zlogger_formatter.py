@@ -4,19 +4,26 @@ from werkzeug.exceptions import BadRequest, NotFound
 import json
 
 # Definir nuevos niveles de log
+LOG_LEVEL_MARK = 9
 LOG_LEVEL_FINI = 11
 LOG_LEVEL_FEND = 12
 LOG_LEVEL_FARG = 13
 LOG_LEVEL_FKWARG = 14
+LOG_LEVEL_RETURNS = 15
+LOG_LEVEL_VALUE = 16
 LOG_LEVEL_FINI_SUPER = 21
-LOG_LEVEL_FEND_SUPER = 22
+LOG_LEVEL_FEND_SUPER = 122
 LOG_LEVEL_FINI_API = 23
 LOG_LEVEL_FEND_API = 24
 LOG_LEVEL_FINI_TEST = 25
 LOG_LEVEL_FEND_TEST = 26
+LOG_LEVEL_FINI_RESALT = 31
+LOG_LEVEL_FEND_RESALT = 32
 
-LOG_LEVEL_RETURNS = 18
-LOG_LEVEL_VALUE = 19
+
+
+
+
 LOG_LEVEL_INFO = logging.INFO
 LOG_LEVEL_DEBUG = logging.DEBUG
 LOG_LEVEL_WARNING = logging.WARNING
@@ -58,18 +65,21 @@ ANSI_WHITE_BACKGROUND = "\u001b[47m"
 ANSI_GREEN_BACKGROUND = "\u001b[42m"
 ANSI_RESET_BACKGROUND = "\u001b[49m"
 
+logging.addLevelName(LOG_LEVEL_MARK, 'FINI.TEST')
 logging.addLevelName(LOG_LEVEL_FINI_TEST, 'FINI.TEST')
 logging.addLevelName(LOG_LEVEL_FEND_TEST, 'FEND.TEST')
 logging.addLevelName(LOG_LEVEL_FINI_API, 'FINI.API')
 logging.addLevelName(LOG_LEVEL_FEND_API, 'FEND.API')
 logging.addLevelName(LOG_LEVEL_FINI, 'FINI')
 logging.addLevelName(LOG_LEVEL_FEND, 'FEND')
+logging.addLevelName(LOG_LEVEL_FINI_RESALT, 'FINI.RESALT')
+logging.addLevelName(LOG_LEVEL_FEND_RESALT, 'FEND.RESALT')
 logging.addLevelName(LOG_LEVEL_VALUE, 'FVALUE')
 logging.addLevelName(LOG_LEVEL_INFO, 'DEBUG')
 logging.addLevelName(LOG_LEVEL_INFO, 'INFO')
 logging.addLevelName(LOG_LEVEL_ERROR, 'WARINNG')
 logging.addLevelName(LOG_LEVEL_ERROR, 'ERROR')
-logging.addLevelName(LOG_LEVEL_ERROR, 'CRITICAL')
+logging.addLevelName(LOG_LEVEL_MARK, 'MARK')
 
 class ZLogger_CustomFormatter(logging.Formatter):
     RUN_LEVEL = 0
@@ -93,6 +103,19 @@ class ZLogger_CustomFormatter(logging.Formatter):
             color_fore = ANSI_CYAN_BRIGHT
             color_back = ANSI_RESET_BACKGROUND
             prefix = "<="
+            
+        if levelno == LOG_LEVEL_FINI_RESALT:
+            level_name = "FINI.RESALT"
+            color_fore = ANSI_BLACK
+            color_back = ANSI_YELLOW_BACKGROUND
+            is_partial_format = False
+            prefix = "=>"
+        elif levelno == LOG_LEVEL_FEND_RESALT:
+            level_name = "FEND.RESALT"
+            color_fore = ANSI_BLACK
+            color_back = ANSI_YELLOW_BACKGROUND
+            prefix = "<="
+            
         if levelno == LOG_LEVEL_FINI_SUPER:
             level_name = "FINI.SUPER"
             color_fore = ANSI_WHITE_BRIGHT
@@ -154,6 +177,11 @@ class ZLogger_CustomFormatter(logging.Formatter):
             level_name = "INFO"
             is_empty_root = False
         elif levelno == LOG_LEVEL_WARNING:
+            color_fore = ANSI_YELLOW_BRIGHT
+            color_back = ANSI_RESET_BACKGROUND
+            level_name = "WARNING"
+            is_empty_root = True
+        elif levelno == LOG_LEVEL_MARK:
             color_fore = ANSI_YELLOW_BRIGHT
             color_back = ANSI_RESET_BACKGROUND
             level_name = "WARNING"

@@ -1,15 +1,11 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
-import odoo
 from odoo import http
-from odoo.http import request, Response
-from inspect import currentframe
-import random
-
-from .. import pi8 as PI8
-from ..pi8 import zlog, logger
-
+from odoo.http import request, BadRequest, Response
+from ..pi8 import zlog, logger, sx, sy
+from werkzeug.exceptions import BadRequest, NotFound
+import json
 
 class in_stock_pi8_codegc(models.TransientModel):
     _name = 'in.stock.pi8.codegc'
@@ -19,7 +15,7 @@ class in_stock_pi8_codegc(models.TransientModel):
     codegc_cache = {}
     
     @staticmethod
-    @zlog.function_handler
+    @zlog.hlog_function
     def _get_codegc__get_keys(codegc):
         if len(codegc) < 6:
             logger.info("Código GC demasiado corto: %s", codegc)
@@ -32,6 +28,7 @@ class in_stock_pi8_codegc(models.TransientModel):
         temporada_key = catalog_key + "T" + codegc[5:7]
 
         to_return = {
+            'catalog_key': catalog_key,
             'linea_key': linea_key,
             'precio_key': precio_key,
             'temporada_key': temporada_key
@@ -55,8 +52,7 @@ class in_stock_pi8_codegc(models.TransientModel):
 
         return filtered_dict
 
-    @api.model
-    @zlog.function_handler
+    @zlog.hlog_function
     def get_codegc(self, codegc):
         # Verificar si el resultado ya está en caché
         if codegc in in_stock_pi8_codegc.codegc_cache:
@@ -64,7 +60,7 @@ class in_stock_pi8_codegc(models.TransientModel):
             return in_stock_pi8_codegc.codegc_cache[codegc]
 
         # Extraer las claves de línea, precio y temporada del código GC
-        claves = in_stock_pi8_codegc._get_codegc__get_keys(codegc)
+        claves = self._get_codegc__get_keys(codegc)
         
         if not all(claves.values()):
             logger.warning(f"Código GC inválido o incompleto: {codegc}")
@@ -76,15 +72,16 @@ class in_stock_pi8_codegc(models.TransientModel):
         temporada = self.env['pi8.codegc.temporada'].ckfield(claves['temporada_key'])
         
         
-        
         to_return = None
         if linea and precio and temporada:
             linea = self.filter_dictionary_by_keys('key,name,tracking', linea)
             precio = self.filter_dictionary_by_keys('key,name,value', precio)
             temporada = self.filter_dictionary_by_keys('key,name', temporada)
-            
+            codegc= linea['key'][0:1] +  linea['key'][2:4] + precio['key'][2:4] + temporada['key'][2:4]
+            codegc = sx.base36.add_verifier(codegc)
             logger.info(f"Código GC válido: {codegc}")
             to_return = {
+                'codegc': codegc,
                 'linea': linea,
                 'precio': precio,
                 'temporada': temporada
@@ -95,48 +92,62 @@ class in_stock_pi8_codegc(models.TransientModel):
             logger.warning(f"Código GC inválido o falta información relacionada: {codegc}")
 
         return to_return
-
-
-    
-class in_stock_pi8_codegc_controller(http.Controller):
-    @http.route('/api/codegc/generate', type='http', methods=['GET'], auth='public', csrf=False)
-    @PI8.zlog.function_handler
-    def superapi_codegc_generate(self, **post):
         
-        qty = post.get('qty')
-        grupo = post.get('grupo')
-        codegc = post.get('codegc')
-        ll = post.get('linea')
-        tt = post.get('tmp')
-        pp = post.get('tmp')
-        precio = post.get('precio')
+    @zlog.hlog_function
+    def generate_codegc_with_tracking(self, codegc):
+        """
+        Genera un código identificador con información de tracking adjunta, basado en la información asociada al 'codegc' proporcionado.
 
-        if precio: 
-            pp= self.env["pi8.codegc.precio"].find_key_by_group_and_value(grupo, precio)  
-            pp= pp[2:] 
+        La función primero recupera información relacionada con el 'codegc' mediante el método 'get_codegc'. Luego, basándose en el tipo de tracking ('serial' o 'lot') definido en la información de la línea del 'codegc', genera un serial único. Finalmente, devuelve el 'codegc' con el serial adjunto, formateado de acuerdo al tipo de tracking.
 
-        codegc = ll + tt + pp
-        if not ll or not tt or not pp:
-            raise UserError("CodeGC es invalido: {codegc}")
+        Parámetros:
+        - codegc (str): El código identificador para el cual se generará la información de tracking.
+
+        Devuelve:
+        - str: El 'codegc' con la información de tracking adjunta. El formato del retorno depende del tipo de tracking:
+            - Si el tracking es de tipo 'serial', devuelve 'codegc$serial'.
+            - Si el tracking es de tipo 'lot', devuelve 'codegc&serial'.
+            - Si no hay un tipo de tracking definido, devuelve el 'codegc' original.
+
+        Lanza:
+        - ValueError: Si no se encuentra información para el 'codegc' proporcionado.
+
+        Ejemplo:
+        - generate_codegc_with_tracking("12345") podría devolver "12345$67890" si el tipo de tracking es 'serial'.
+        """
+        codegc_info = self.get_codegc(codegc)
+        if not codegc_info:
+            raise ValueError(f"No se encontró información para el codegc: {codegc}")
+        codegc_verifier = codegc_info['codegc']
         
-        in_stock_pi8_codegc.PartCode.convert_from_base36(codegc)
-        
-        # elif:
-        #    is_valid = CodeGC_PartCode.validate(codegc)
-            
-            
+        tracking = sy.codegc.generate_serial(codegc_verifier, 10)
 
-                    
-        info_codegc = in_stock_pi8_codegc.get_codegc(codegc)
-        tracking = info_codegc['linea']['tracking']
-        serial = None
-        if tracking == 'serial':
-            serial == PI8.sx.base62.random_generate(codegc, 9)
-            return codegc + '$' + serial
-        elif tracking == 'lot':
-            serial == PI8.sx.base62.random_generate(codegc, 9)
-            return codegc + '&' + serial
-        elif tracking == 'none':
+        if codegc_info['linea']['tracking'] == 'serial':
+            return f'{codegc}${tracking}'
+        elif codegc_info['linea']['tracking'] == 'lot':
+            return f'{codegc}&{tracking}'
+        else:
             return codegc
 
 
+
+class in_stock_pi8_codegc_controller(http.Controller):
+    @http.route('/api/codegc/<codegc>', type='http', methods=['GET'], auth='public', csrf=False)
+    @zlog.api_handler  
+    def superapi_codegc_get(self, codegc):
+        codegc_info = request.env['in.stock.pi8.codegc'].get_codegc(codegc)
+        if not codegc_info: return BadRequest(codegc)
+        return codegc_info
+    
+    @http.route('/api/codegc/<codegc>/tracking/generate', type='http', methods=['POST'], auth='public', csrf=False)
+    @zlog.api_handler
+    def superapi_codegc_tracking_get(self, codegc, **kwargs):
+        model = request.env['in.stock.pi8.codegc']
+        codegc_info = model.get_codegc(codegc)
+        if not codegc_info: return BadRequest(codegc)
+        codegc_verifier = codegc_info['codegc']
+
+        # Generar múltiples códigos con tracking
+        qty = int(request.params.get('qty', 1))
+        generated_codes = [model.generate_codegc_with_tracking(codegc_verifier) for _ in range(qty)]
+        return generated_codes

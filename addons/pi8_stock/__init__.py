@@ -10,9 +10,3 @@ from .components.product_barcode_quickadd_wizard import product_barcode_quickadd
 
 import logging
 from ._in_common.zlogger import ZLogger
-# ZLogger.configure_logger()
-# logging.setLoggerClass(ZLogger)
-
-# import logging
-# from .._in_common.zlogger import ZLogger, logger_api_handler, logger_function_handler, logger_superfunc_handler, logger_prms
-# _logger = logging.getLogger("testLogger")

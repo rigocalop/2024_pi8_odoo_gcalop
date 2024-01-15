@@ -1,8 +1,11 @@
 import random
+from ..zlogger import ZLogger, hlog_atomic
+
 class sx_BaseConverter:
     base = None
     characters = None
-
+    zlog = None
+    
     @classmethod
     def from_number(cls, num):
         if num == 0:
@@ -24,11 +27,18 @@ class sx_BaseConverter:
             power = length - i - 1
             num += value * (cls.base ** power)
         return num
+    
+    
+    @classmethod
+    @hlog_atomic(enable=True, resalt=True)
+    def sum_and_remainder(cls, base_strings):
+        total = sum(cls.to_number(s) for s in base_strings)
+        remainder = total % cls.base
+        return remainder
 
     @classmethod
     def calculate_verifier_character(cls, base_string):
-        numeric_value = cls.to_number(base_string)
-        remainder = numeric_value % cls.base
+        remainder = cls.sum_and_remainder(base_string)
         verifier_character = cls.from_number(remainder)
         return verifier_character
     
