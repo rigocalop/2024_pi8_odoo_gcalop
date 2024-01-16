@@ -21,13 +21,11 @@ class sx_BaseConverter:
     def to_number(cls, base_string):
         length = len(base_string)
         num = 0
-
         for i, char in enumerate(base_string):
             value = cls.characters.index(char)
             power = length - i - 1
             num += value * (cls.base ** power)
         return num
-    
     
     @classmethod
     @hlog_atomic(enable=True, resalt=True)
