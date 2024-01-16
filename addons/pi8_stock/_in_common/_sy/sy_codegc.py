@@ -14,53 +14,56 @@ class sy_CodeGC:
         return text_codes
     
     @hlog_function()
-    def parse_product_details(text_code, str_separator='$', str_separator2='*'):
+    def parse_product_details(text_code, str_separators=['&', '$']):
         """
-        Extracts product code, quantity, and serial number from a single text code.
-        :param text_code: String with the format 'code$serial*quantity' or variations thereof.
-        :return: Tuple (code, quantity, serial)
+        Extracts product code, quantity, and lotname number from a single text code.
+        :param text_code: String with formats like 'code$lotname*quantity' or 'code&lotname*quantity'.
+        :param str_separators: List of string separators.
+        :return: Tuple (code, quantity, lotname)
         """
         logger = ZLogger.get_logger()            
         # Initialize default values
         code = None
         quantity = 1.0  # Default quantity
-        serial = None
+        lotname = None
 
         try:
-            # Splitting the string based on the presence of '$' and '*'
-            if str_separator in text_code:
-                parts = text_code.split(str_separator)
+            # Find the first separator that is present in the text_code
+            separator_used = next((sep for sep in str_separators if sep in text_code), None)
+
+            if separator_used:
+                parts = text_code.split(separator_used)
                 code = parts[0].strip()
                 rest = parts[1] if len(parts) > 1 else ''
 
-                if str_separator2 in rest:
-                    serial, quantity_str = rest.split(str_separator2)
+                if '*' in rest:
+                    lotname, quantity_str = rest.split('*')
                     quantity = float(quantity_str.strip()) if quantity_str else 1.0
                 else:
-                    serial = rest.strip()
+                    lotname = rest.strip()
             else:
-                if str_separator2 in text_code:
-                    code, quantity_str = text_code.split(str_separator2)
+                if '*' in text_code:
+                    code, quantity_str = text_code.split('*')
                     code = code.strip()
                     quantity = float(quantity_str.strip()) if quantity_str else 1.0
                 else:
                     code = text_code.strip()
-
-            # Stripping any whitespace from the serial
-            serial = serial.strip() if serial else None
+            
+            # Stripping any whitespace from the lotname
+            lotname = lotname.strip() if lotname else None
 
         except ValueError:
             # Handle cases where quantity cannot be converted to float
             logger.warning("Invalid format for quantity. Unable to convert to float.")
 
-        return code, quantity, serial
+        return code, quantity, lotname, separator_used
     
     
     @classmethod
     @hlog_function()
     def validate_serial(cls, codegc, serial):
         # Validar que el serial tenga al menos 2 caracteres
-        logger = ZLogger.get_logger()            
+        logger = ZLogger.get_logger()      
         
         is_valid_serial = sx.base62.validate(serial)
         if not is_valid_serial: return False

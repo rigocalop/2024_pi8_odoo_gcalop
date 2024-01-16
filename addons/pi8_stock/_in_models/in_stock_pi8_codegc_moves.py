@@ -16,13 +16,13 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
     @hlog.hlog_function()
     def _parse_to_moves_codegc__from_text_codes__single_text_code(cls, single_text_code):
         # Initialize default values
-        default_code, qty, serial = sy.codegc.parse_product_details(single_text_code,"$","*") 
+        default_code, qty, lot_name, separator_used = sy.codegc.parse_product_details(single_text_code) 
         
         # Return as a dictionary
         to_return = {	
             'default_code': default_code,
             'qty': qty,
-            'serial': serial,
+            'lot_name': lot_name,
             'lot_id': None,
             'product_id': None,
             'codegc': None,
@@ -49,7 +49,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
             code_details = None
             try:
                 code_details =  cls._parse_to_moves_codegc__from_text_codes__single_text_code(entry)
-                if not code_details['default_code'] and not code_details['serial']:
+                if not code_details['default_code'] and not code_details['lot_name']:
                     invalid_entries.append({'entry': entry, 'description': 'Invalid entry'})
                 
                 codegc_moves.append(code_details)                    
@@ -88,7 +88,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
         StockProductionLot = self.env['stock.lot']
 
         # Extraer todos los seriales
-        serials = [detail['serial'] for detail in codegc_moves if detail['serial']]
+        serials = [detail['lot_name'] for detail in codegc_moves if detail['lot_name']]
 
         # Buscar todos los lotes correspondientes a los seriales
         lots = StockProductionLot.search([('name', 'in', serials)])
@@ -98,12 +98,12 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
 
         # Actualizar lot_id y product_id en codes_details basado en la información del lote
         for code_detail in codegc_moves:
-            if code_detail['serial'] in lot_map:
-                lot_id, product_id = lot_map[code_detail['serial']]
+            if code_detail['lot_name'] in lot_map:
+                lot_id, product_id = lot_map[code_detail['lot_name']]
                 code_detail['lot_id'] = lot_id
                 code_detail['product_id'] = product_id
             else:
-                logger.warning(f"Lote no encontrado con serial: {code_detail['serial']}")
+                logger.warning(f"Not find **lot_name**: {code_detail['lot_name']}")
         return codegc_moves
 
     @api.model
@@ -136,17 +136,17 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
             if codegc_info:
                 # Actualizar el diccionario con la información obtenida
                 code_detail['codegc'] = codegc_info
-                serial = code_detail['serial']
+                lot_name = code_detail['lot_name']
                 is_valid = True
                 is_valid_code = sx.base36.validate(default_code)
                 is_valid_serial = True
                 
-                if serial: 
-                    is_valid_serial = sy.codegc.validate_serial(default_code, serial)
+                if lot_name: 
+                    is_valid_serial = sy.codegc.validate_serial(default_code, lot_name)
                 is_valid = is_valid_code and is_valid_serial
                 
                 if not is_valid:
-                    logger.warning(f"El serial no es valido: {serial}") 
+                    logger.warning(f"Invalid **lot_name**: {lot_name}") 
                 
                 # Actualizar el diccionario con los resultados de la validación
                 code_detail['isvalid'] = is_valid
@@ -226,7 +226,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
 
         if valid_codegc_moves != []:
             # Obtener valores distintos de 'codegc' en la lista filtrada
-            unique_codegc_list = list(set(item.get('serial') for item in valid_codegc_moves))
+            unique_codegc_list = list(set(item.get('lot_name') for item in valid_codegc_moves))
             Product = self.env['product.product']
             StockLot = self.env['stock.lot']
 
@@ -234,7 +234,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
             lots_to_create = []
             for move in valid_codegc_moves:
                 new_lot = {
-                    'name': move['serial'],
+                    'name': move['lot_name'],
                     'product_id': move['product_id']
                 }
                 lots_to_create.append(new_lot)
@@ -246,7 +246,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
 
             # Actualizar 'lot_id' en 'codegc_moves' con los IDs de los lot creados
             for move in codegc_moves:
-                matching_lot = next((lot for lot in created_lots if lot.name == move['serial']), None)
+                matching_lot = next((lot for lot in created_lots if lot.name == move['lot_name']), None)
                 if matching_lot:
                     move['lot_id'] = matching_lot.id
                     move['iscreated_lot'] = True
@@ -297,6 +297,8 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
         if not invalid_entries:
             codegc_moves = self._update_codegc_moves__create_new_products(codegc_moves)
             self._update_codegc_moves__create_new_stock_lots(codegc_moves)
+            stats['created_products'] = self.sx_list_count_matches(codegc_moves, 'iscreated_product', True)
+            stats['created_lots'] = self.sx_list_count_matches(codegc_moves, 'iscreated_lot', True)
             stats['message']='The products and corresponding lots have been created.'
         else:
             stats['message']='Exist invalid entries.'
