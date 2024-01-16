@@ -30,7 +30,7 @@ class sx_BaseConverter:
         return num
     
     @classmethod
-    @hlog_atomic(enable=True, resalt=True)
+    @hlog_atomic(enable=True)
     def sum_and_remainder(cls, base_strings):
         _logger = ZLogger.get_logger()
         _logger.mark(f"base_strings: {base_strings}")

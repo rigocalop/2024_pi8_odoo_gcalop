@@ -15,7 +15,7 @@ class in_stock_pi8_codegc(models.TransientModel):
     codegc_cache = {}
     
     @staticmethod
-    @hlog.hlog_function
+    @hlog.hlog_function()
     def _get_codegc__get_keys(codegc):
         if len(codegc) < 6:
             logger.info("Código GC demasiado corto: %s", codegc)
@@ -52,7 +52,7 @@ class in_stock_pi8_codegc(models.TransientModel):
 
         return filtered_dict
 
-    @hlog.hlog_function
+    @hlog.hlog_function()
     def get_codegc(self, codegc):
         # Verificar si el resultado ya está en caché
         if codegc in in_stock_pi8_codegc.codegc_cache:
@@ -93,7 +93,7 @@ class in_stock_pi8_codegc(models.TransientModel):
 
         return to_return
         
-    @hlog.hlog_function
+    @hlog.hlog_function()
     def generate_codegc_with_tracking(self, codegc):
         """
         Genera un código identificador con información de tracking adjunta, basado en la información asociada al 'codegc' proporcionado.

@@ -13,7 +13,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
 
 #region "procedimientos atomicos"
     @classmethod
-    @hlog.hlog_function
+    @hlog.hlog_function()
     def _parse_to_moves_codegc__from_text_codes__single_text_code(cls, single_text_code):
         # Initialize default values
         default_code, qty, serial = sy.codegc.parse_product_details(single_text_code,"$","*") 
@@ -37,7 +37,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
         return to_return
 
     @classmethod
-    @hlog.hlog_function
+    @hlog.hlog_function()
     def _parse_to_codegc_moves__from_text_codes(cls, text_codes, **kwargs):
         # Limpiar y preparar los códigos de texto
         codegc_moves = []
@@ -60,7 +60,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
 #endregion
 
 #region "Actualización de codegc_moves"
-    @hlog.hlog_function
+    @hlog.hlog_function()
     def _update_codegc_moves__product_ids_from_default_code(self, codegc_moves):
         Product = self.env['product.product']
 
@@ -83,7 +83,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
         return codegc_moves
 
     @api.model
-    @hlog.hlog_function
+    @hlog.hlog_function()
     def _update_codegc_moves__lot_ids_from_serial(self, codegc_moves):
         StockProductionLot = self.env['stock.lot']
 
@@ -107,7 +107,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
         return codegc_moves
 
     @api.model
-    @hlog.hlog_function
+    @hlog.hlog_function()
     def _update_codegc_moves__from_product_id(self, codegc_moves):
         Product = self.env['product.product']
 
@@ -127,7 +127,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                     detail['default_code'] = product_map[detail['product_id']]
         return codegc_moves
     
-    @hlog.hlog_function
+    @hlog.hlog_function()
     def _update_codegc_moves__codegc_info_and_validate(self, codegc_moves):
         for code_detail in codegc_moves:
             default_code = code_detail['default_code']
@@ -159,7 +159,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
         return codegc_moves
 #endregion
 
-    @hlog.hlog_function
+    @hlog.hlog_function()
     def _create_products__get_product_vals(self, codegc):
         # Validar el código del producto
         codegc_info = self.env["in.stock.pi8.codegc"].get_codegc(codegc)
@@ -185,7 +185,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
             product_vals['barcode'] = codegc
         return product_vals
     
-    @hlog.hlog_function
+    @hlog.hlog_function()
     def _update_codegc_moves__create_new_products(self, codegc_moves):
         created_products = []
         # Filtrar elementos que cumplan con la condición 'isvalid=True' y 'product_id=None'
@@ -219,12 +219,11 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                     move['iscreated_product'] = True
         return codegc_moves
     
-    @hlog.hlog_function
+    @hlog.hlog_function()
     def _update_codegc_moves__create_new_stock_lots(self, codegc_moves):
-        created_products = []
         # Filtrar elementos que cumplan con la condición 'isvalid=True' y 'product_id=None'
         valid_codegc_moves = [item for item in codegc_moves if item['isvalid'] and item['lot_id'] is None]
-        
+
         if valid_codegc_moves != []:
             # Obtener valores distintos de 'codegc' en la lista filtrada
             unique_codegc_list = list(set(item.get('serial') for item in valid_codegc_moves))
@@ -241,7 +240,6 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                 lots_to_create.append(new_lot)
                 logger.warning(f"Product Lot Agregado: {move['text_code']}")
 
-
             # Realizar una inserción masiva de productos en la base de datos
             if lots_to_create:
                 created_lots = StockLot.create(lots_to_create)
@@ -249,7 +247,6 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
             # Actualizar 'lot_id' en 'codegc_moves' con los IDs de los lot creados
             for move in codegc_moves:
                 matching_lot = next((lot for lot in created_lots if lot.name == move['serial']), None)
-
                 if matching_lot:
                     move['lot_id'] = matching_lot.id
                     move['iscreated_lot'] = True
@@ -261,11 +258,28 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                 if move.get('isvalid_code') == False:
                     description = 'Invalid code'
                 elif move.get('isvalid_serial') == False:
-                    description = 'Invalid serial'
+                    description = 'Invalid Tracking'
                 logger.warning(f"Invalid Entry: {move['text_code']} - {description}")
                 invalid_entries.append({'entry': move, 'description': description})
     
-    @hlog.hlog_superfunc
+    @staticmethod
+    def sx_list_count_matches(dict_list, field, boolean_value):
+        """
+        Cuenta las coincidencias de un valor booleano específico en un campo dado 
+        en una lista de diccionarios.
+
+        :param dict_list: Lista de diccionarios.
+        :param field: Campo en el que buscar el valor booleano.
+        :param boolean_value: Valor booleano a buscar.
+        :return: Número de coincidencias del valor booleano en el campo especificado.
+        """
+        count = 0
+        for item in dict_list:
+            if item.get(field) == boolean_value:
+                count += 1
+        return count
+    
+    @hlog.hlog_superfunc()
     def superfunc_codegc_moves__from_text_codes(self, text_codes):
         text_codes = sy.codegc.parse_clean_text_codes(text_codes)
         codegc_moves, invalid_entries = in_stock_pi8_codegc_moves._parse_to_codegc_moves__from_text_codes(text_codes)
@@ -276,17 +290,46 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
         codegc_moves = self._update_codegc_moves__from_product_id(codegc_moves)
         codegc_moves = self._update_codegc_moves__codegc_info_and_validate(codegc_moves)
         self._update_invalid_entries(codegc_moves, invalid_entries)
-        codegc_moves = self._update_codegc_moves__create_new_products(codegc_moves)
-        codegc_moves = self._update_codegc_moves__create_new_stock_lots(codegc_moves)
-        return codegc_moves, invalid_entries
+        stats = {}
+        stats['entries_valids'] = self.sx_list_count_matches(codegc_moves, 'isvalid', True)
+        stats['entries_invalids'] = self.sx_list_count_matches(codegc_moves, 'isvalid', False)
+        
+        if not invalid_entries:
+            codegc_moves = self._update_codegc_moves__create_new_products(codegc_moves)
+            self._update_codegc_moves__create_new_stock_lots(codegc_moves)
+            stats['message']='The products and corresponding lots have been created.'
+        else:
+            stats['message']='Exist invalid entries.'
 
+        return codegc_moves, invalid_entries, stats
 
 class in_stock_pi8_codegc_moves_controller(http.Controller):
     @http.route('/api/codegc/moves', type='http', methods=['POST'], auth='public', csrf=False)
     @hlog.hlog_api
     def superapi_codegc_moves__from_text_codes(self, **post):
-        text_codes = json.loads(request.httprequest.data).get('text_codes')
-        codegc_moves, invalid_entries = request.env['in.stock.pi8.codegc.moves'].superfunc_codegc_moves__from_text_codes(text_codes)
-        if invalid_entries: return BadRequest(f'{invalid_entries}')
-        return json.dumps({'result': codegc_moves})
+        data = json.loads(request.httprequest.data)
+        text_codes = None
+        if isinstance(data, list):
+            text_codes = ','.join(data)
+        else: 
+            text_codes = data.get('text_codes')
+        
+        codegc_moves, invalid_entries, stats  = request.env['in.stock.pi8.codegc.moves'].superfunc_codegc_moves__from_text_codes(text_codes)
+        
+        if stats['entries_invalids'] > 0:
+            error_response = {
+                'error':  'Bad Request',
+                'message': 'Invalid entries found',
+                'stats': stats,
+                'invalid_entries': invalid_entries
+            }
+            return BadRequest(error_response)
+        else:
+            to_return = {
+                'message': 'The products and corresponding lots have been created.',
+                'stats': stats,
+                'codegc_moves': codegc_moves
+            }
+            return to_return
+
 

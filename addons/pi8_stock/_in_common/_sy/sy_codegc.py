@@ -1,18 +1,19 @@
 from .._sx import lib_sx as sx
 from ..zlogger import ZLogger
 from ..zlogger_handlers import *
+import re
 
 
 class sy_CodeGC:   
     
-    @hlog_function
+    @hlog_function()
     def parse_clean_text_codes(text_codes):
         # Reemplaza diferentes separadores por un único separador (por ejemplo, una coma)
         text_codes = re.sub(r'[\r\n]+', ',', text_codes)
         text_codes = re.sub(r',+', ',', text_codes).strip()
         return text_codes
     
-    @hlog_function
+    @hlog_function()
     def parse_product_details(text_code, str_separator='$', str_separator2='*'):
         """
         Extracts product code, quantity, and serial number from a single text code.
@@ -56,7 +57,7 @@ class sy_CodeGC:
     
     
     @classmethod
-    @hlog_function
+    @hlog_function()
     def validate_serial(cls, codegc, serial):
         # Validar que el serial tenga al menos 2 caracteres
         logger = ZLogger.get_logger()            
@@ -79,7 +80,7 @@ class sy_CodeGC:
         
     
     @classmethod
-    @hlog_function
+    @hlog_function()
     def generate_serial(cls, codegc, longitud_serial):
         if longitud_serial < 2:
             raise ValueError("La longitud del serial debe ser al menos 2")

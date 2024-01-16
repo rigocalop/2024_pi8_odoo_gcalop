@@ -31,7 +31,7 @@ class test_in_stock_pi8_codegc_moves(TransactionCase):
 
 @tagged('-at_install', 'post_install')
 class test_in_stock_pi8_codegc_moves_controller(HttpCase):
-    @hlog.hlog_test
+    @hlog.hlog_test_api(resalt=False, auth_user='admin',auth_password='admin')
     def test_superapi_codegc_moves__from_text_codes(self):
         # Preparar datos de prueba
         InStockPi8Codegc = self.env['in.stock.pi8.codegc']
@@ -43,7 +43,7 @@ class test_in_stock_pi8_codegc_moves_controller(HttpCase):
         response = self.url_open('/api/codegc/moves?hola=hola', data=data, headers=self.headers, timeout=60)        
         
         
-    @hlog.hlog_test_api(resalt=True, auth_user='admin',auth_password='admin')
+    @hlog.hlog_test_api(resalt=False, auth_user='admin',auth_password='admin')
     def test_superapi_stock_pi8_codegc_GET(self):
         codigo = '0A11233'
         response = self.url_open(f'/api/codegc/{codigo}', headers=self.headers, timeout=60)              
