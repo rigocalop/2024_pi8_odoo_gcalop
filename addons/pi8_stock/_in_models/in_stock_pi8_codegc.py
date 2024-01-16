@@ -3,7 +3,7 @@ from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 from odoo import http
 from odoo.http import request, BadRequest, Response
-from ..pi8 import zlog, logger, sx, sy
+from ..pi8 import zlog, logger, sx, sy, hlog
 from werkzeug.exceptions import BadRequest, NotFound
 import json
 
@@ -15,7 +15,7 @@ class in_stock_pi8_codegc(models.TransientModel):
     codegc_cache = {}
     
     @staticmethod
-    @zlog.hlog_function
+    @hlog.hlog_function
     def _get_codegc__get_keys(codegc):
         if len(codegc) < 6:
             logger.info("Código GC demasiado corto: %s", codegc)
@@ -52,7 +52,7 @@ class in_stock_pi8_codegc(models.TransientModel):
 
         return filtered_dict
 
-    @zlog.hlog_function
+    @hlog.hlog_function
     def get_codegc(self, codegc):
         # Verificar si el resultado ya está en caché
         if codegc in in_stock_pi8_codegc.codegc_cache:
@@ -93,7 +93,7 @@ class in_stock_pi8_codegc(models.TransientModel):
 
         return to_return
         
-    @zlog.hlog_function
+    @hlog.hlog_function
     def generate_codegc_with_tracking(self, codegc):
         """
         Genera un código identificador con información de tracking adjunta, basado en la información asociada al 'codegc' proporcionado.
@@ -133,14 +133,14 @@ class in_stock_pi8_codegc(models.TransientModel):
 
 class in_stock_pi8_codegc_controller(http.Controller):
     @http.route('/api/codegc/<codegc>', type='http', methods=['GET'], auth='public', csrf=False)
-    @zlog.api_handler  
+    @hlog.hlog_api
     def superapi_codegc_get(self, codegc):
         codegc_info = request.env['in.stock.pi8.codegc'].get_codegc(codegc)
         if not codegc_info: return BadRequest(codegc)
         return codegc_info
     
     @http.route('/api/codegc/<codegc>/tracking/generate', type='http', methods=['POST'], auth='public', csrf=False)
-    @zlog.api_handler
+    @hlog.hlog_api
     def superapi_codegc_tracking_get(self, codegc, **kwargs):
         model = request.env['in.stock.pi8.codegc']
         codegc_info = model.get_codegc(codegc)

@@ -4,7 +4,7 @@ from odoo import http, api, fields, models, _
 from odoo.exceptions import UserError
 from odoo.http import request
 from werkzeug.exceptions import BadRequest, NotFound
-from ..pi8 import zlog, logger, sx, sy
+from ..pi8 import zlog, logger, sx, sy, hlog
 
 
 class in_stock_pi8_codegc_moves(models.AbstractModel):
@@ -13,7 +13,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
 
 #region "procedimientos atomicos"
     @classmethod
-    @zlog.hlog_function
+    @hlog.hlog_function
     def _parse_to_moves_codegc__from_text_codes__single_text_code(cls, single_text_code):
         # Initialize default values
         default_code, qty, serial = sy.codegc.parse_product_details(single_text_code,"$","*") 
@@ -37,7 +37,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
         return to_return
 
     @classmethod
-    @zlog.hlog_function
+    @hlog.hlog_function
     def _parse_to_codegc_moves__from_text_codes(cls, text_codes, **kwargs):
         # Limpiar y preparar los códigos de texto
         codegc_moves = []
@@ -60,7 +60,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
 #endregion
 
 #region "Actualización de codegc_moves"
-    @zlog.hlog_function
+    @hlog.hlog_function
     def _update_codegc_moves__product_ids_from_default_code(self, codegc_moves):
         Product = self.env['product.product']
 
@@ -83,7 +83,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
         return codegc_moves
 
     @api.model
-    @zlog.hlog_function
+    @hlog.hlog_function
     def _update_codegc_moves__lot_ids_from_serial(self, codegc_moves):
         StockProductionLot = self.env['stock.lot']
 
@@ -107,7 +107,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
         return codegc_moves
 
     @api.model
-    @zlog.hlog_function
+    @hlog.hlog_function
     def _update_codegc_moves__from_product_id(self, codegc_moves):
         Product = self.env['product.product']
 
@@ -127,7 +127,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                     detail['default_code'] = product_map[detail['product_id']]
         return codegc_moves
     
-    @zlog.hlog_function
+    @hlog.hlog_function
     def _update_codegc_moves__codegc_info_and_validate(self, codegc_moves):
         for code_detail in codegc_moves:
             default_code = code_detail['default_code']
@@ -159,7 +159,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
         return codegc_moves
 #endregion
 
-    @zlog.hlog_function
+    @hlog.hlog_function
     def _create_products__get_product_vals(self, codegc):
         # Validar el código del producto
         codegc_info = self.env["in.stock.pi8.codegc"].get_codegc(codegc)
@@ -185,7 +185,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
             product_vals['barcode'] = codegc
         return product_vals
     
-    @zlog.hlog_function
+    @hlog.hlog_function
     def _update_codegc_moves__create_new_products(self, codegc_moves):
         created_products = []
         # Filtrar elementos que cumplan con la condición 'isvalid=True' y 'product_id=None'
@@ -219,7 +219,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                     move['iscreated_product'] = True
         return codegc_moves
     
-    @zlog.hlog_function
+    @hlog.hlog_function
     def _update_codegc_moves__create_new_stock_lots(self, codegc_moves):
         created_products = []
         # Filtrar elementos que cumplan con la condición 'isvalid=True' y 'product_id=None'
@@ -265,7 +265,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                 logger.warning(f"Invalid Entry: {move['text_code']} - {description}")
                 invalid_entries.append({'entry': move, 'description': description})
     
-    @zlog.hlog_superfunc
+    @hlog.hlog_superfunc
     def superfunc_codegc_moves__from_text_codes(self, text_codes):
         text_codes = sy.codegc.parse_clean_text_codes(text_codes)
         codegc_moves, invalid_entries = in_stock_pi8_codegc_moves._parse_to_codegc_moves__from_text_codes(text_codes)
@@ -283,7 +283,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
 
 class in_stock_pi8_codegc_moves_controller(http.Controller):
     @http.route('/api/codegc/moves', type='http', methods=['POST'], auth='public', csrf=False)
-    @zlog.api_handler
+    @hlog.hlog_api
     def superapi_codegc_moves__from_text_codes(self, **post):
         text_codes = json.loads(request.httprequest.data).get('text_codes')
         codegc_moves, invalid_entries = request.env['in.stock.pi8.codegc.moves'].superfunc_codegc_moves__from_text_codes(text_codes)

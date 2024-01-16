@@ -1,6 +1,7 @@
 from .._sx import lib_sx as sx
-from ..zlogger import hlog_function, ZLogger
-import re
+from ..zlogger import ZLogger
+from ..zlogger_handlers import *
+
 
 class sy_CodeGC:   
     

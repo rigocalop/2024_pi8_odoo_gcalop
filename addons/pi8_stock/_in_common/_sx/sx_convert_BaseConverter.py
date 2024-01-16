@@ -1,5 +1,7 @@
 import random
-from ..zlogger import ZLogger, hlog_atomic
+from ..zlogger import ZLogger
+from ..zlogger_handlers import hlog_atomic
+
 
 class sx_BaseConverter:
     base = None

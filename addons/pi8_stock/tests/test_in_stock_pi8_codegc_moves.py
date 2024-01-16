@@ -1,7 +1,7 @@
 from odoo.tests.common import TransactionCase
 from odoo.tests import HttpCase, tagged
 import json
-from ..pi8 import zlog, sy, sx
+from ..pi8 import zlog, sy, sx, hlog
 
 
 
@@ -13,7 +13,7 @@ class test_in_stock_pi8_codegc_moves(TransactionCase):
     def setUpClass(cls):
         super(test_in_stock_pi8_codegc_moves, cls).setUpClass()
     
-    @zlog.hlog_test
+    @hlog.hlog_test
     def test_indev(self):
         # 0A12233$a23456789z
         InStockPi8Codegc = self.env['in.stock.pi8.codegc']
@@ -21,7 +21,7 @@ class test_in_stock_pi8_codegc_moves(TransactionCase):
         serial =  sy.codegc.generate_serial(codigo, 10)
         validar = sy.codegc.validate_serial(codigo, serial)
     
-    @zlog.hlog_test
+    @hlog.hlog_test
     def test_superfunc_codegc_moves__from_text_codes(self):
         # Prueba con códigos de texto válidos
         text_codes = 'NA2244$32*2,A02244$32DE*2'  # reemplaza con códigos válidos
@@ -31,7 +31,7 @@ class test_in_stock_pi8_codegc_moves(TransactionCase):
 
 @tagged('-at_install', 'post_install')
 class test_in_stock_pi8_codegc_moves_controller(HttpCase):
-    @zlog.hlog_test
+    @hlog.hlog_test
     def test_superapi_codegc_moves__from_text_codes(self):
         # Preparar datos de prueba
         InStockPi8Codegc = self.env['in.stock.pi8.codegc']
@@ -43,7 +43,7 @@ class test_in_stock_pi8_codegc_moves_controller(HttpCase):
         response = self.url_open('/api/codegc/moves?hola=hola', data=data, headers=self.headers, timeout=60)        
         
         
-    @zlog.hlog_test_api(resalt=True, auth_user='admin',auth_password='admin')
+    @hlog.hlog_test_api(resalt=True, auth_user='admin',auth_password='admin')
     def test_superapi_stock_pi8_codegc_GET(self):
         codigo = '0A11233'
         response = self.url_open(f'/api/codegc/{codigo}', headers=self.headers, timeout=60)              
