@@ -65,16 +65,20 @@ class sy_CodeGC:
     @hlog_function()
     def validate_lot_name(cls, codegc, lot_name):
         # Validar que el serial tenga al menos 2 caracteres
-        separator_user = lot_name[0]    
+        logger = ZLogger.get_logger()
+
+        lot_name_separator = lot_name[0]
         lot_name = lot_name[1:]
-        
-        logger = ZLogger.get_logger()      
-        
+        #validar codigo con serial        
         is_valid_serial = sx.base62.validate(lot_name)
+        
+        
+        
         if not is_valid_serial: return False
         
         #validar codigo con serial
         numero_codigo = sx.base62.to_number(codegc)
+        
         penultimo_caracter_serial = lot_name[-2]
         valor_penultimo_caracter = sx.base62.to_number(penultimo_caracter_serial)
         residuo = numero_codigo % 62
@@ -93,9 +97,13 @@ class sy_CodeGC:
         if longitud_serial < 2:
             raise ValueError("La longitud del serial debe ser al menos 2")
 
+        # toadd = '0'
+        # if tracking_type == 'lot': toadd = '1'
+        # elif tracking_type == 'serial': toadd = '2'
+        
         # Convertir el código a un número entero base 62
         numero_codigo = sx.base62.to_number(codegc)
-        parte_inicial_serial = sx.base62.random_generate(longitud_serial - 2)
+        parte_inicial_serial =sx.base62.random_generate(longitud_serial - 2)
         
         # Calcular el penúltimo carácter del serial
         valor_penultimo_caracter = numero_codigo % 62

@@ -118,14 +118,17 @@ class in_stock_pi8_codegc(models.TransientModel):
         codegc_info = self.get_codegc(codegc)
         if not codegc_info:
             raise ValueError(f"No se encontró información para el codegc: {codegc}")
+        
+        
         codegc_verifier = codegc_info['codegc']
         
-        tracking = sy.codegc.generate_serial(codegc_verifier, 10)
+        
+        lot_name = sy.codegc.generate_serial(codegc_verifier, 10)
 
         if codegc_info['linea']['tracking'] == 'serial':
-            return f'{codegc}${tracking}'
+            return f'{codegc}${lot_name}'
         elif codegc_info['linea']['tracking'] == 'lot':
-            return f'{codegc}&{tracking}'
+            return f'{codegc}&{lot_name}'
         else:
             return codegc
 
