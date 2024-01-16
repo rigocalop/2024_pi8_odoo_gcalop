@@ -37,11 +37,19 @@ class sx_BaseConverter:
         total = sum(cls.to_number(s) for s in base_strings)
         remainder = total % cls.base
         return remainder
+    
+    @classmethod
+    @hlog_atomic(enable=True)
+    def sum(cls, base_strings):
+        _logger = ZLogger.get_logger()
+        _logger.mark(f"base_strings: {base_strings}")
+        total = sum(cls.to_number(s) for s in base_strings)
+        return total
 
     @classmethod
     def calculate_verifier_character(cls, base_string):
-        remainder = cls.sum_and_remainder(base_string)
-        verifier_character = cls.from_number(remainder)
+        total = cls.to_number(base_string[:2]) + cls.sum(base_string)
+        verifier_character = cls.from_number(total % cls.base)
         return verifier_character
     
     @classmethod

@@ -32,7 +32,8 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
             "iscreated_product": False,
             "iscreated_lot": False,
             "text_code": single_text_code,
-            "tracking": "none"
+            "tracking": "none",
+            "lot_name_separator_used": separator_used
         }
         return to_return
 
@@ -88,10 +89,10 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
         StockProductionLot = self.env['stock.lot']
 
         # Extraer todos los seriales
-        serials = [detail['lot_name'] for detail in codegc_moves if detail['lot_name']]
+        lot_names = [detail['lot_name'] for detail in codegc_moves if detail['lot_name']]
 
         # Buscar todos los lotes correspondientes a los seriales
-        lots = StockProductionLot.search([('name', 'in', serials)])
+        lots = StockProductionLot.search([('name', 'in', lot_names)])
 
         # Crear un diccionario para mapear serial a lot_id y product_id
         lot_map = {lot.name: (lot.id, lot.product_id.id) for lot in lots}
@@ -137,13 +138,14 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                 # Actualizar el diccionario con la información obtenida
                 code_detail['codegc'] = codegc_info
                 lot_name = code_detail['lot_name']
+                lot_name_separator_used = code_detail['lot_name_separator_used']
                 is_valid = True
                 is_valid_code = sx.base36.validate(default_code)
                 is_valid_serial = True
                 
                 if lot_name: 
-                    is_valid_serial = sy.codegc.validate_serial(default_code, lot_name)
-                is_valid = is_valid_code and is_valid_serial
+                    is_valid_lot_name = sy.codegc.validate_lot_name(default_code, lot_name)
+                is_valid = is_valid_code and is_valid_lot_name
                 
                 if not is_valid:
                     logger.warning(f"Invalid **lot_name**: {lot_name}") 
@@ -151,7 +153,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                 # Actualizar el diccionario con los resultados de la validación
                 code_detail['isvalid'] = is_valid
                 code_detail['isvalid_code'] = is_valid_code
-                code_detail['isvalid_serial'] = is_valid_serial
+                code_detail['isvalid_serial'] = is_valid_lot_name
             else:
                 code_detail['isvalid'] = False
                 code_detail['isvalid_code'] = False

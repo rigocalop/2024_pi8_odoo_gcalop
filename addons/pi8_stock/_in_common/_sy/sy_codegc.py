@@ -41,6 +41,7 @@ class sy_CodeGC:
                     quantity = float(quantity_str.strip()) if quantity_str else 1.0
                 else:
                     lotname = rest.strip()
+                lotname = separator_used + lotname if lotname else None
             else:
                 if '*' in text_code:
                     code, quantity_str = text_code.split('*')
@@ -51,6 +52,7 @@ class sy_CodeGC:
             
             # Stripping any whitespace from the lotname
             lotname = lotname.strip() if lotname else None
+            
 
         except ValueError:
             # Handle cases where quantity cannot be converted to float
@@ -61,24 +63,27 @@ class sy_CodeGC:
     
     @classmethod
     @hlog_function()
-    def validate_serial(cls, codegc, serial):
+    def validate_lot_name(cls, codegc, lot_name):
         # Validar que el serial tenga al menos 2 caracteres
+        separator_user = lot_name[0]    
+        lot_name = lot_name[1:]
+        
         logger = ZLogger.get_logger()      
         
-        is_valid_serial = sx.base62.validate(serial)
+        is_valid_serial = sx.base62.validate(lot_name)
         if not is_valid_serial: return False
         
         #validar codigo con serial
         numero_codigo = sx.base62.to_number(codegc)
-        penultimo_caracter_serial = serial[-2]
+        penultimo_caracter_serial = lot_name[-2]
         valor_penultimo_caracter = sx.base62.to_number(penultimo_caracter_serial)
         residuo = numero_codigo % 62
         is_valid_serial_codigo = int(residuo) == int(valor_penultimo_caracter)
         
         #resultados de validacion
-        logger.debug(f"validate_codegc_serial: {residuo} == {valor_penultimo_caracter}")
+        logger.debug(f"validate_lot_name: {residuo} == {valor_penultimo_caracter}")
         if not is_valid_serial_codigo: 
-            logger.warning(f"Serial-Codigo inválido: {codegc}-{serial}")
+            logger.warning(f"Lot_name inválido: {codegc}-{lot_name}")
         return is_valid_serial_codigo
         
     
