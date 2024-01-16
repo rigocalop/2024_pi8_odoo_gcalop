@@ -96,7 +96,7 @@ class ZLogger(logging.Logger):
         if self.isEnabledFor(LOG_LEVEL_VALUE):
             self._log(LOG_LEVEL_VALUE, msg, args, **kwargs)
     def mark(self, msg, *args, **kwargs):
-        if self.level == 100:
+        if self.level == 1:
             self._log(LOG_LEVEL_MARK, msg, args, **kwargs)            
 #endregion
 
@@ -210,28 +210,49 @@ def hlog_test(func):
 def hlog_atomic(enable=False, traceback=False, resalt = False, demo_return=None):
     def decorator(func):
         def wrapper(*args, **kwargs):
-            ZLogger.disable_root_logger()
+            # ZLogger.disable_root_logger()
             _logger = ZLogger.get_logger()
             ZLogger_CustomFormatter.RUN_LEVEL += 1  
             run_level = ZLogger_CustomFormatter.RUN_LEVEL
             original_log_level = _logger.level  # Guardar el nivel de log original
             try:
-                if enable:
-                    _logger.setLevel(0)  # Desactivar el logger raíz
-                    _logger = ZLogger.get_logger()
-                    _logger.func_ini(f'Atomic: ({func.__name__}). {func.__module__}', resalt, *args, **kwargs)
+                # # if enable:
+                # #     _logger.setLevel(0)  # Desactivar el logger raíz
+                # #     _logger.func_ini(f'Atomic: ({func.__name__}). {func.__module__}', resalt, *args, **kwargs)
                 
+                # # if enable and demo_return:
+                # #     _logger.info(f"Demo Return: {demo_return}")
+                # #     result = demo_return
+                # # else:
+                # #     result = func(*args, **kwargs)
+                    
+                # _logger.func_ini(f'Atomic: ({func.__name__}). {func.__module__}', resalt, *args, **kwargs)
+                # result = func(*args, **kwargs)
+                # _logger.returns(f'Atomic: {func.__module__} . {func.__name__}', to_return_function=result)
+                # _logger.func_end(f'Atomic: ({func.__name__}). {func.__module__}', resalt)
+
+                # # ZLogger_CustomFormatter.RUN_LEVEL = run_level
+                # # if enable:
+                # #     _logger.setLevel(original_log_level)  # Desactivar el logger raíz
+                # #     _logger.returns(f'Atomic: {func.__module__} . {func.__name__}', to_return_function=result)
+                # #     _logger.func_end(f'Atomic: ({func.__name__}). {func.__module__}', resalt)
+                # ZLogger_CustomFormatter.RUN_LEVEL = run_level - 1
+                # return result
+            
+                if enable:
+                    
+                    _logger.test_ini(f'Atomic: ({func.__name__}) . {func.__module__}', resalt)
                 if enable and demo_return:
                     _logger.info(f"Demo Return: {demo_return}")
                     result = demo_return
                 else:
+                    if enable: _logger.setLevel(1)  
                     result = func(*args, **kwargs)
-
+                    if enable: _logger.setLevel(original_log_level) 
                 ZLogger_CustomFormatter.RUN_LEVEL = run_level
                 if enable:
-                    _logger.setLevel(original_log_level)  # Desactivar el logger raíz
                     _logger.returns(f'Atomic: {func.__module__} . {func.__name__}', to_return_function=result)
-                    _logger.func_end(f'Atomic: ({func.__name__}). {func.__module__}', resalt)
+                    _logger.test_end(f'Atomic: ({func.__name__}) . {func.__module__}', resalt)
                 ZLogger_CustomFormatter.RUN_LEVEL = run_level - 1
                 return result
             except Exception as e:

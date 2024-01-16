@@ -4,7 +4,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 import json
 
 # Definir nuevos niveles de log
-LOG_LEVEL_MARK = 9
+LOG_LEVEL_MARK = 1
 LOG_LEVEL_FINI = 11
 LOG_LEVEL_FEND = 12
 LOG_LEVEL_FARG = 13
@@ -199,7 +199,8 @@ class ZLogger_CustomFormatter(logging.Formatter):
         formatted_indent = '+   ' * (run_level)
         
         # construccion de la linea
-        base_format += f" {formatted_level_name} [{formatted_run_level}]"
+        logger = logging.getLogger("testLogger")
+        base_format += f" {formatted_level_name} [{formatted_run_level}.{logger.level}]"
         if is_partial_format: base_format += f"{color_format}{formatted_indent}{prefix} %(message)s{ANSI_RESET}"
         else: base_format = f"{color_format}{base_format}{formatted_indent}{prefix} %(message)s{ANSI_RESET}"
         return base_format
