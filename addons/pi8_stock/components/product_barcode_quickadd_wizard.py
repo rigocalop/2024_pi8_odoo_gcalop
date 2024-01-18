@@ -5,9 +5,7 @@ import odoo
 
 class product_barcode_quickadd_wizard(models.TransientModel):
     _name = 'pi8.stock.product.barcode.quickadd.wizard'
-
     _description = 'Asistente para Agregar Productos por Código de Barras'
-
     text_codes = fields.Text(string="Códigos en Texto")
     stock_picking_id = fields.Many2one('stock.picking', string='Traslado Interno')
 

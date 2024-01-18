@@ -34,30 +34,6 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
             "text_code": single_text_code,
         }
         return to_return
-
-    # @classmethod
-    # @hlog.hlog_function()
-    # def _parse_to_codegc_moves__from_text_codes(cls, text_codes, **kwargs):
-    #     # Limpiar y preparar los códigos de texto
-    #     codegc_moves = []
-    #     invalid_entries = []
-    #     for entry in text_codes.split(','):
-    #         entry = entry.strip()
-
-    #         # Parse each code to extract details
-    #         code_details = None
-    #         try:
-    #             code_details =  cls._parse_to_moves_codegc__from_text_codes__single_text_code(entry)
-    #             if not code_details['isvalid']:
-    #                 invalid_entries.append({'entry': entry, 'description': 'Invalid entry'})
-    #             elif not code_details['default_code'] and not code_details['lot_name']:
-    #                 invalid_entries.append({'entry': entry, 'description': 'Invalid entry'})
-    #             else:
-    #                 codegc_moves.append(code_details)                    
-    #         except Exception as e:
-    #             invalid_entries.append({'entry': entry, 'description': 'Invalid entry'})
-            
-    #     return codegc_moves, invalid_entries
     
     @classmethod
     @hlog.hlog_function()
@@ -138,18 +114,47 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
 
         # Identificar los product_id para los que se necesita buscar default_code (asegurando que sean únicos)
         product_ids_set = {detail['product_id'] for detail in codegc_moves if detail['product_id'] and not detail.get('default_code')}
-
+        
+        product_map = {}
         if product_ids_set:
             # Buscar en product.product para obtener los default_code
             products = Product.browse(product_ids_set)
+            # Crear un diccionario para mapear product_id a default_code y uom_id
+            product_map = {product.id: {'default_code': product.default_code } for product in products}
+        
+        logger.info(f"product_map: {product_map}")
+        
+        # Actualizar codegc_moves con default_code y uom_id
+        for detail in codegc_moves:
+            if detail['product_id'] in product_map:
+                detail.update({
+                    'default_code': product_map[detail['product_id']]['default_code'],
+                })
+                
+        return codegc_moves
 
-            # Crear un diccionario para mapear product_id a default_code
-            product_map = {product.id: product.default_code for product in products}
+    @api.model
+    @hlog.hlog_function()
+    def _update_codegc_moves__from_product_id__set_uom(self, codegc_moves):
+        Product = self.env['product.product']
 
-            # Actualizar codes_details con default_code
-            for detail in codegc_moves:
-                if detail['product_id'] in product_map:
-                    detail['default_code'] = product_map[detail['product_id']]
+        # Identificar los product_id para los que se necesita buscar default_code (asegurando que sean únicos)
+        product_ids_set = {detail['product_id'] for detail in codegc_moves if detail['product_id']}
+        product_map = {}
+
+        if product_ids_set:
+            products = Product.browse(product_ids_set)
+            product_map = {product.id: {'default_code': product.default_code, 'uom_id': product.uom_id.id} for product in products}
+        
+        logger.info(f"product_map: {product_map}")
+        
+        # Actualizar codegc_moves con default_code y uom_id
+        for detail in codegc_moves:
+            if detail['product_id'] in product_map:
+                detail.update({
+                    'uom_id': product_map[detail['product_id']]['uom_id']
+                })
+                
         return codegc_moves
     
     @hlog.hlog_function()
@@ -305,12 +310,21 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
         return count
     
     @hlog.hlog_superfunc()
+    def superfunc_codegc_moves__to_stock_move(self, list_text_codes):
+        stock_move = []
+        stock_move_line = []
+        codegc_moves, invalid_entries = self.superfunc_codegc_moves__from_list_text_codes(list_text_codes)
+        if invalid_entries:
+            return stock_move, stock_move_line, invalid_entries
+    
+    @hlog.hlog_superfunc()
     def superfunc_codegc_moves__from_list_text_codes(self, list_text_codes):
         codegc_moves, invalid_entries = self._parse_to_codegc_moves__from_text_codes(list_text_codes)
         # Actualizar información de product_id y lot_id
         codegc_moves = self._update_codegc_moves__product_ids_from_default_code(codegc_moves)
         codegc_moves = self._update_codegc_moves__lot_ids_from_serial(codegc_moves)
         codegc_moves = self._update_codegc_moves__from_product_id(codegc_moves)
+        
         codegc_moves = self._update_codegc_moves__codegc_info_and_validate(codegc_moves)
         self._update_invalid_entries(codegc_moves, invalid_entries)
         stats = {}
@@ -320,6 +334,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
         if not invalid_entries:
             codegc_moves = self._update_codegc_moves__create_new_products(codegc_moves)
             self._update_codegc_moves__create_new_stock_lots(codegc_moves)
+            codegc_moves = self._update_codegc_moves__from_product_id__set_uom(codegc_moves)
             stats['created_products'] = self.sx_list_count_matches(codegc_moves, 'iscreated_product', True)
             stats['created_lots'] = self.sx_list_count_matches(codegc_moves, 'iscreated_lot', True)
             stats['message']='The products and corresponding lots have been created.'
@@ -339,11 +354,7 @@ class in_stock_pi8_codegc_moves_controller(http.Controller):
     @hlog.hlog_api
     def superapi_codegc_moves__from_text_codes(self, **post):
         data = json.loads(request.httprequest.data)
-        text_codes = None
-        if not isinstance(data, list):
-            text_codes = data.get('text_codes')
-            list_text_codes = text_codes.split(',')
-        
+        list_text_codes = sx.list.convert(data)
         codegc_moves, invalid_entries, stats  = request.env['in.stock.pi8.codegc.moves'].superfunc_codegc_moves__from_list_text_codes(list_text_codes)
         
         if stats['entries_invalids'] > 0:
