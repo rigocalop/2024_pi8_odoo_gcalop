@@ -4,9 +4,6 @@ import json
 from ..pi8 import zlog, sy, sx, hlog
 
 
-
-
-
 @tagged('-at_install', 'post_install')
 class test_in_stock_pi8_codegc_moves(TransactionCase):
     @classmethod

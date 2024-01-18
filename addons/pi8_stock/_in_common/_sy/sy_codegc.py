@@ -7,11 +7,24 @@ import re
 class sy_CodeGC:   
     
     @hlog_function()
-    def parse_clean_text_codes(text_codes):
+    def eliminar_espacios_saltos(texto):
+        # Elimina los espacios en blanco, los saltos de línea y los retornos de carro
+        return texto.replace(" ", "").replace("\n", "").replace("\r", "").strip()
+
+    @classmethod
+    @hlog_function()
+    def parse_clean_text_codes(cls,text_codes):
         # Reemplaza diferentes separadores por un único separador (por ejemplo, una coma)
         text_codes = re.sub(r'[\r\n]+', ',', text_codes)
         text_codes = re.sub(r',+', ',', text_codes).strip()
-        return text_codes
+
+        # Dividir el texto por comas y limpiar cada elemento
+        elementos = text_codes.split(',')
+        elementos_limpios = [cls.eliminar_espacios_saltos(elem) for elem in elementos if cls.eliminar_espacios_saltos(elem)]
+
+        # Unir los elementos no vacíos con comas
+        text_codes_limpio = ','.join(elementos_limpios)
+        return text_codes_limpio
     
     @hlog_function()
     def parse_product_details(text_code, str_separators=['&', '$']):
@@ -53,12 +66,13 @@ class sy_CodeGC:
             # Stripping any whitespace from the lotname
             lotname = lotname.strip() if lotname else None
             
-
-        except ValueError:
+            isvalid = True
+        except Exception as e:
             # Handle cases where quantity cannot be converted to float
             logger.warning("Invalid format for quantity. Unable to convert to float.")
+            isvalid = False
 
-        return code, quantity, lotname, separator_used
+        return code, quantity, lotname, isvalid
     
     
     @classmethod

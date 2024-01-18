@@ -11,7 +11,7 @@
                     </group>
                 </sheet>
                 <footer>
-                    <button string="Crear" class="oe_highlight" type="object" name="ensure_products_exist_from_text_codes" />
+                    <button string="Crear" class="oe_highlight" type="object" name="call_superfunc_codegc_moves__from_list_text_codes" />
                     <button string="Cancelar" special="cancel" />
                 </footer>
             </form>

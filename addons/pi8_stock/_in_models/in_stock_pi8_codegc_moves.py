@@ -16,7 +16,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
     @hlog.hlog_function()
     def _parse_to_moves_codegc__from_text_codes__single_text_code(cls, single_text_code):
         # Initialize default values
-        default_code, qty, lot_name, separator_used = sy.codegc.parse_product_details(single_text_code) 
+        default_code, qty, lot_name, isvalid = sy.codegc.parse_product_details(single_text_code) 
         
         # Return as a dictionary
         to_return = {	
@@ -26,34 +26,58 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
             'lot_id': None,
             'product_id': None,
             'codegc': None,
-            'isvalid': True,
-            'isvalid_code': True,
-            'isvalid_serial': True,
+            'isvalid': isvalid,
+            'isvalid_code': isvalid,
+            'isvalid_serial': isvalid,
             "iscreated_product": False,
             "iscreated_lot": False,
             "text_code": single_text_code,
-            "tracking": "none",
-            "lot_name_separator_used": separator_used
         }
         return to_return
 
+    # @classmethod
+    # @hlog.hlog_function()
+    # def _parse_to_codegc_moves__from_text_codes(cls, text_codes, **kwargs):
+    #     # Limpiar y preparar los códigos de texto
+    #     codegc_moves = []
+    #     invalid_entries = []
+    #     for entry in text_codes.split(','):
+    #         entry = entry.strip()
+
+    #         # Parse each code to extract details
+    #         code_details = None
+    #         try:
+    #             code_details =  cls._parse_to_moves_codegc__from_text_codes__single_text_code(entry)
+    #             if not code_details['isvalid']:
+    #                 invalid_entries.append({'entry': entry, 'description': 'Invalid entry'})
+    #             elif not code_details['default_code'] and not code_details['lot_name']:
+    #                 invalid_entries.append({'entry': entry, 'description': 'Invalid entry'})
+    #             else:
+    #                 codegc_moves.append(code_details)                    
+    #         except Exception as e:
+    #             invalid_entries.append({'entry': entry, 'description': 'Invalid entry'})
+            
+    #     return codegc_moves, invalid_entries
+    
     @classmethod
     @hlog.hlog_function()
-    def _parse_to_codegc_moves__from_text_codes(cls, text_codes, **kwargs):
+    def _parse_to_codegc_moves__from_text_codes(cls, list_text_codes, **kwargs):
         # Limpiar y preparar los códigos de texto
         codegc_moves = []
         invalid_entries = []
-        for entry in text_codes.split(','):
+        for entry in list_text_codes:
             entry = entry.strip()
 
             # Parse each code to extract details
             code_details = None
             try:
                 code_details =  cls._parse_to_moves_codegc__from_text_codes__single_text_code(entry)
-                if not code_details['default_code'] and not code_details['lot_name']:
+                if not code_details['isvalid']:
                     invalid_entries.append({'entry': entry, 'description': 'Invalid entry'})
-                
-                codegc_moves.append(code_details)                    
+                elif not code_details['default_code'] and not code_details['lot_name']:
+                    invalid_entries.append({'entry': entry, 'description': 'Invalid entry'})
+                else:
+                    codegc_moves.append(code_details)                    
             except Exception as e:
                 invalid_entries.append({'entry': entry, 'description': 'Invalid entry'})
             
@@ -138,7 +162,6 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                 # Actualizar el diccionario con la información obtenida
                 code_detail['codegc'] = codegc_info
                 lot_name = code_detail['lot_name']
-                lot_name_separator_used = code_detail['lot_name_separator_used']
                 is_valid = True
                 is_valid_code = sx.base36.validate(default_code)
                 is_valid_serial = True
@@ -282,10 +305,8 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
         return count
     
     @hlog.hlog_superfunc()
-    def superfunc_codegc_moves__from_text_codes(self, text_codes):
-        text_codes = sy.codegc.parse_clean_text_codes(text_codes)
-        codegc_moves, invalid_entries = in_stock_pi8_codegc_moves._parse_to_codegc_moves__from_text_codes(text_codes)
-
+    def superfunc_codegc_moves__from_list_text_codes(self, list_text_codes):
+        codegc_moves, invalid_entries = self._parse_to_codegc_moves__from_text_codes(list_text_codes)
         # Actualizar información de product_id y lot_id
         codegc_moves = self._update_codegc_moves__product_ids_from_default_code(codegc_moves)
         codegc_moves = self._update_codegc_moves__lot_ids_from_serial(codegc_moves)
@@ -294,7 +315,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
         self._update_invalid_entries(codegc_moves, invalid_entries)
         stats = {}
         stats['entries_valids'] = self.sx_list_count_matches(codegc_moves, 'isvalid', True)
-        stats['entries_invalids'] = self.sx_list_count_matches(codegc_moves, 'isvalid', False)
+        stats['entries_invalids'] = self.sx_list_count_matches(codegc_moves, 'isvalid', False) + len(invalid_entries)
         
         if not invalid_entries:
             codegc_moves = self._update_codegc_moves__create_new_products(codegc_moves)
@@ -304,8 +325,14 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
             stats['message']='The products and corresponding lots have been created.'
         else:
             stats['message']='Exist invalid entries.'
-
         return codegc_moves, invalid_entries, stats
+    
+    @hlog.hlog_superfunc()
+    def superfunc_codegc_moves__from_text_codes(self, text_codes):
+        text_codes = sy.codegc.parse_clean_text_codes(text_codes)
+        list_text_codes = text_codes.split(',')
+        return self.superfunc_codegc_moves__from_list_text_codes(list_text_codes)
+    
 
 class in_stock_pi8_codegc_moves_controller(http.Controller):
     @http.route('/api/codegc/moves', type='http', methods=['POST'], auth='public', csrf=False)
@@ -313,12 +340,11 @@ class in_stock_pi8_codegc_moves_controller(http.Controller):
     def superapi_codegc_moves__from_text_codes(self, **post):
         data = json.loads(request.httprequest.data)
         text_codes = None
-        if isinstance(data, list):
-            text_codes = ','.join(data)
-        else: 
+        if not isinstance(data, list):
             text_codes = data.get('text_codes')
+            list_text_codes = text_codes.split(',')
         
-        codegc_moves, invalid_entries, stats  = request.env['in.stock.pi8.codegc.moves'].superfunc_codegc_moves__from_text_codes(text_codes)
+        codegc_moves, invalid_entries, stats  = request.env['in.stock.pi8.codegc.moves'].superfunc_codegc_moves__from_list_text_codes(list_text_codes)
         
         if stats['entries_invalids'] > 0:
             error_response = {
