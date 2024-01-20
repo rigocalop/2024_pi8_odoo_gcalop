@@ -10,134 +10,15 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
     _name = 'in.stock.pi8.codegc.moves'
     _description = 'Modelo Base GCALOP'
     
-        
-
-    @classmethod
-    def expandEntryTextCode(cls, entry_textcode):
-        """
-        Extrae el código del producto, la cantidad y el número de lote de un código de texto único.
-        :param entry_textcode: Cadena de texto con formatos como 'codigo$lote*cantidad' o 'codigo&lote*cantidad'.
-            Los separadores utilizados para dividir el texto son '&' y '$'.
-        :return: Diccionario con los siguientes campos:
-            - 'entry': Texto original.
-            - 'isvalid': Booleano que indica si el formato es válido.
-            - 'code': Código del producto extraído del texto.
-            - 'qty': Cantidad del producto como un valor flotante.
-            - 'lot': Nombre o número de lote del producto.
-                Esta función trata de identificar y separar los componentes del código del producto,
-                la cantidad y el número de lote, basándose en los separadores específicos.
-                Si el formato del texto de entrada no cumple con los patrones esperados,
-                se marcará como no válido y se manejarán las excepciones adecuadamente.
-        """
-        # Mapeo de separadores a tipos de seguimiento
-        tracking_map = {'$': 'serial', '&': 'lot'}
-        separator = tracking_map.keys()
-
-        # Inicializar valores predeterminados
-        code = None
-        qty = 1.0  # Cantidad por defecto
-        lot = None
-        tracking = 'none'
-        entry_invalid = None
-
-        try:
-            # Encontrar el primer separador que está presente en entry_textcode
-            separator_used = next((sep for sep in separator if sep in entry_textcode), None)
-
-            if separator_used:
-                parts = entry_textcode.split(separator_used)
-                code = parts[0].strip()
-                rest = parts[1] if len(parts) > 1 else ''
-
-                if '*' in rest:
-                    lot, qty_str = rest.split('*')
-                    qty = float(qty_str.strip()) if qty_str else 1.0
-                else:
-                    lot = rest.strip()
-
-                lot = separator_used + lot if lot else None
-                tracking = tracking_map.get(separator_used, 'none')
-            else:
-                if '*' in entry_textcode:
-                    code, qty_str = entry_textcode.split('*')
-                    code = code.strip()
-                    qty = float(qty_str.strip()) if qty_str else 1.0
-                else:
-                    code = entry_textcode.strip()
-
-            # Eliminar espacios en blanco del nombre del lote
-            lot = lot.strip() if lot else None
-
-            if not lot and not code:
-                entry_invalid = {'entry': entry_textcode, 'msg': 'No existen código y lote'}
-
-        except Exception as e:
-            entry_invalid = {'entry': entry_textcode, 'msg': 'Formato de cantidad inválido. No se puede convertir a flotante.'}
-
-        if not entry_invalid and tracking == 'none' and lot is not None:
-            entry_invalid = {'entry': entry_textcode, 'msg': 'Seguimiento ninguno y lote no es None'}
-
-        entry = {'entry': entry_textcode, 'code': code, 'qty': qty, 'lot': lot, 'tracking': tracking}
-
-        return entry, entry_invalid
-
-
-#region "procedimientos atomicos"
-    @classmethod
-    @hlog.hlog_function()
-    def _parse_to_moves_codegc__from_text_codes__single_text_code(cls, single_text_code):
-        # Initialize default values
-        entry, entry_invalid = cls.expandEntryTextCode(single_text_code)
-        if entry == None:
-            return None
-        #default_code, qty, lot_name, isvalid =  sy.codegc.parse_product_details(single_text_code, str_separators=['&', '$']) 
-        
-        # Return as a dictionary
-        to_return = {
-            'product_id': None,
-            'lot_id': None,
-            'product_uom': None,
-            'name': None,
-            'product_uom_qty': entry.get('qty'),
-            'default_code': entry.get('code'),
-            'lot_name': entry.get('lot'),
-            'codegc': None,
-            'isvalid': True,
-            'isvalid_code': True,
-            'isvalid_serial': True,
-            "iscreated_product": False,
-            "iscreated_lot": False,
-            "text_code": entry.get('entry'),
-        }
-        return to_return
-    
     @classmethod
     @hlog.hlog_function()
     def _parse_to_codegc_moves__from_text_codes(cls, list_text_codes, **kwargs):
         # Limpiar y preparar los códigos de texto
-        codegc_moves = []
-        invalid_entries = []
-        for entry in list_text_codes:
-            entry = entry.strip()
-
-            # Parse each code to extract details
-            code_details = None
-            try:
-                code_details =  cls._parse_to_moves_codegc__from_text_codes__single_text_code(entry)
-                if not code_details['isvalid']:
-                    invalid_entries.append({'entry': entry, 'description': 'Invalid entry'})
-                elif not code_details['default_code'] and not code_details['lot_name']:
-                    invalid_entries.append({'entry': entry, 'description': 'Invalid entry'})
-                else:
-                    codegc_moves.append(code_details)                    
-            except Exception as e:
-                invalid_entries.append({'entry': entry, 'description': 'Invalid entry'})
-            
+        mapping_dict = { 'product_uom_qty': 'qty', 'default_code': 'code', 'lot_name': 'lot','entry': 'entry'}
+        default_values = { 'product_id': None, 'lot_id': None, 'product_uom': None, 'name': None, 'codegc': None, 'isvalid': True, 'isvalid_code': True, 'isvalid_serial': True, "iscreated_product": False,"iscreated_lot": False }
+        codegc_moves, invalid_entries = sy.EntryCodeLot.processEntryTextCodes(list_text_codes, default_values, mapping_dict)
         return codegc_moves, invalid_entries
-#endregion
 
-    
-    
     @hlog.hlog_function()
     def _update_codegc_moves__codegc_info_and_validate(self, codegc_moves):
         for code_detail in codegc_moves:
@@ -171,9 +52,6 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                 logger.warning(f"No se encontró información para el código GC: {default_code}")
         return codegc_moves
 
-
-
-
     @hlog.hlog_function()
     def _create_products__get_product_vals(self, codegc):
         # Validar el código del producto
@@ -201,9 +79,6 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
         return product_vals
     
     
-    
-    
-    
     @hlog.hlog_function()
     def _update_codegc_moves__create_new_products(self, codegc_moves):
         created_products = []
@@ -223,7 +98,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                 product_vals = self._create_products__get_product_vals(move['default_code'])
                 tracking = move['codegc']['linea']['tracking']
                 product_vals['tracking'] = tracking
-                logger.warning(f"Productos Agregado: {move['text_code']}")
+                logger.warning(f"Productos Agregado: {move['entry']}")
                 product_vals_to_create.append(product_vals)
 
             # Realizar una inserción masiva de productos en la base de datos
@@ -256,7 +131,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                     'product_id': move['product_id']
                 }
                 lots_to_create.append(new_lot)
-                logger.warning(f"Product Lot Agregado: {move['text_code']}")
+                logger.warning(f"Product Lot Agregado: {move['entry']}")
 
             # Realizar una inserción masiva de productos en la base de datos
             if lots_to_create:
@@ -293,9 +168,7 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                 detail.update({
                     'product_uom': product_map[detail['product_id']]['uom_id']
                 })
-
         return codegc_moves
-
 
     def _update_invalid_entries(self, codegc_moves, invalid_entries):
         for move in codegc_moves:
@@ -305,9 +178,8 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
                     description = 'Invalid code'
                 elif move.get('isvalid_serial') == False:
                     description = 'Invalid Tracking'
-                logger.warning(f"Invalid Entry: {move['text_code']} - {description}")
+                logger.warning(f"Invalid Entry: {move['entry']} - {description}")
                 invalid_entries.append({'entry': move, 'description': description})
-    
     
     @hlog.hlog_superfunc()
     def superfunc_codegc_moves__from_list_text_codes(self, list_text_codes, fields = None):
@@ -346,7 +218,6 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
             stats['message']='The products and corresponding lots have been created.'
         else:
             stats['message']='Exist invalid entries.'
-        
         logger.info("Tipo de codegc_moves: " + str(type(codegc_moves)))
         return codegc_moves, invalid_entries, stats
     

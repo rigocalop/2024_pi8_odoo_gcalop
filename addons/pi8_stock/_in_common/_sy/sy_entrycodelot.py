@@ -81,33 +81,46 @@ class sy_EntryCodeLot:
 
 
     @classmethod
-    def processEntryTextCodes(cls, entry_textcodes):
+    def processEntryTextCodes(cls, entry_textcodes, default_values=None, mapping_dict=None):
         """
         Procesa una lista de códigos de texto de entrada y los clasifica como válidos o inválidos.
         :param entry_textcodes: Lista de cadenas de texto, cada una con formatos como 'codigo$lote*cantidad' o 'codigo&lote*cantidad'.
+        :param default_values: Valores iniciales por defecto para aplicar a cada entrada antes de la expansión.
+        :param mapping_dict: Diccionario de mapeo para asignar campos de las entradas expandidas a nuevos nombres de campos.
         :return: Dos listas: la primera con las entradas válidas y la segunda con las entradas inválidas.
         """
-        entry_textcode = sx.XList.ensure(entry_textcodes, separator=',')
         valid_entries = []
         invalid_entries = []
 
-        for entry_textcode in entry_textcodes:
+        for text_code in entry_textcodes:
             try:
-                entry = cls.expandEntryTextCode(entry_textcode)
+                # Aplicar valores por defecto si están disponibles
+                entry = default_values.copy() if default_values else {}
+                expanded_entry = cls.expandEntryTextCode(text_code)
+                entry.update(expanded_entry)
+
                 code = entry['code']
                 lot = entry['lot']
                 if code and not cls.validate_CODE(code):
                     raise ExceptionEntryCodeLot('Código inválido')
-                
-                if lot and not cls.validate_LOT(lot):
+                if lot and not cls.validate_LOT(code, lot):
                     raise ExceptionEntryCodeLot('LOT inválido')
-                
+
+                # Aplicar el mapeo si está disponible
+                if mapping_dict:
+                    mapped_entry = {new_key: entry[old_key] for new_key, old_key in mapping_dict.items() if old_key in expanded_entry}
+                    entry.update(mapped_entry)
+                    
+                else:
+                    entry.update(expanded_entry)
+
                 valid_entries.append(entry)
+
             except ExceptionEntryCodeLot as e:
-                invalid_entries.append({'entry': entry_textcode, 'msg': str(e)})
+                invalid_entries.append({'entry': text_code, 'msg': str(e)})
 
         return valid_entries, invalid_entries
-   
+
     @classmethod
     def validate_CODE(cls, code):
         """
@@ -125,13 +138,11 @@ class sy_EntryCodeLot:
             return False
 
         code_base = code[:-1]  # Todo excepto el último carácter
-        original_verifier = code[-1]  # Último carácter
 
         regenerated_code_with_verifier = sx.base36.add_verifier(code_base)
-        regenerated_verifier = regenerated_code_with_verifier[-1]
 
         # Verificar si el dígito verificador regenerado coincide con el original
-        return regenerated_verifier == original_verifier
+        return code == regenerated_code_with_verifier
 
     @classmethod
     def validate_LOT(cls, code, LOT):
