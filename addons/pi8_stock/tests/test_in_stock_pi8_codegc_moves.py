@@ -21,7 +21,7 @@ class test_in_stock_pi8_codegc_moves(TransactionCase):
     @hlog.hlog_test
     def test_superfunc_codegc_moves__from_text_codes(self):
         # Prueba con códigos de texto válidos
-        text_codes = 'NA2244$32*2,A02244$32DE*2'  # reemplaza con códigos válidos
+        text_codes = '0A214584$TwFLP4CE4s'
         zlog.warning('test_generate_codes_list_from_text')
         self.env['in.stock.pi8.codegc.moves'].superfunc_codegc_moves__from_text_codes(text_codes)
         
@@ -32,15 +32,14 @@ class test_in_stock_pi8_codegc_moves_controller(HttpCase):
     def test_superapi_codegc_moves__from_text_codes(self):
         # Preparar datos de prueba
         InStockPi8Codegc = self.env['in.stock.pi8.codegc']
-        codigo = '0A112333'
-        codigo2 = '0A11234X'
-        serial =  sy.codegc.generate_serial(codigo, 10)
-        text_codes = f'{codigo}${serial},{codigo2}${serial}'
-        data = json.dumps({'text_codes': text_codes})
-        response = self.url_open('/api/codegc/moves?hola=hola', data=data, headers=self.headers, timeout=60)        
+        codegc = '0A21459'
+        fullcode = sy.codegc.generate_fullcode(codegc, 10, 'serial')
+        data = json.dumps({'text_codes': fullcode})
+        data = json.dumps([ "0A214584$1cQxKP404T", "0A214584$jiGsiDm446", "0A214584$S2bHzUPR4l"])
+        response = self.url_open('/api/codegc/moves', data=data, headers=self.headers, timeout=60)        
         
         
     @hlog.hlog_test_api(resalt=False, auth_user='admin',auth_password='admin')
     def test_superapi_stock_pi8_codegc_GET(self):
         codigo = '0A11233'
-        response = self.url_open(f'/api/codegc/{codigo}', headers=self.headers, timeout=60)              
+        response = self.url_open(f'/api/codegc/{codigo}', headers=self.headers, timeout=60)

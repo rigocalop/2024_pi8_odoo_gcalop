@@ -8,7 +8,7 @@
                     <field name="text_codes"/>
                 </group>
                 <footer>
-                    <button string="Add Products" type="object" name="add_stock_moves_to_picking_from_text" class="oe_highlight"/>
+                    <button string="Add Products" type="object" name="call_process_text_codes_with_picking" class="oe_highlight"/>
                     <button string="Cerrar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>

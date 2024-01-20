@@ -128,3 +128,19 @@ class sy_CodeGC:
         serial = sx.base62.add_verifier(serial_temporal)
         return serial
     
+    @classmethod
+    @hlog_function()
+    def generate_fullcode(cls, codegc, longitud_serial, tracking_type=None):
+        if longitud_serial < 2:
+            raise ValueError("La longitud del serial debe ser al menos 2")
+        codegc = codegc[0:8]
+        codegc = sx.base36.add_verifier(codegc)
+        if (tracking_type == 'none' or tracking_type == None):
+            return codegc
+
+        serial = cls.generate_serial(codegc, longitud_serial)
+        if (tracking_type == 'lot'): charsep = '&'
+        elif (tracking_type == 'serial'): charsep = '$'
+        else: charsep = ''
+        return codegc + charsep + serial
+        

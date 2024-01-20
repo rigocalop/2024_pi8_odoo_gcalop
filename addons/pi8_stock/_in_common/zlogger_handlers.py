@@ -34,12 +34,12 @@ def base_execute_and_log(func, args, kwargs, enable, compact, resalt, demo_retur
         return result
     except Exception as e:
         error_message = f'Atomic ERROR: ({func.__name__}). {func.__module__} Error durante la ejecución de la función: {str(e)}'
-        if traceback:
-            error_traceback = tb.format_exc()
-            error_message += f"\n{error_traceback}"
-            response_content = json.dumps({'error': str(e), 'traceback': error_traceback})
-        else:
-            response_content = json.dumps({'error': str(e)})
+        # if traceback:
+        #     error_traceback = tb.format_exc()
+        #     error_message += f"\n{error_traceback}"
+        #     response_content = json.dumps({'error': str(e), 'traceback': error_traceback})
+        # else:
+        response_content = json.dumps({'error': str(e)})
         if enable:
             _logger.setLevel(original_log_level)
             _logger.error(error_message)

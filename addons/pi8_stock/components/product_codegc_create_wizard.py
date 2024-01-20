@@ -17,7 +17,7 @@ class codegc_product_create_wizard(models.TransientModel):
     def call_superfunc_codegc_moves__from_list_text_codes(self):
         # Verificar si self.codes es un string con formato de array JSON
         try:
-            list_text_codes = sx.list.convert(self.codes)
+            list_text_codes = sx.XList.convert(self.codes)
         except Exception:
             raise UserError('El formato de los códigos no es válido.')
             
@@ -36,12 +36,4 @@ class codegc_product_create_wizard(models.TransientModel):
                 }
             }
             
-        # decorador de funciones
-        # def ensure_pssroducts_exist_from_text_codes(self):
-        #     # Verificar si self.codes es un string con formato de array JSON
-        #     entries_valid, entries_invalid, stats = self.env['in.stock.pi8.codegc.moves'].superfunc_codegc_moves__from_list_text_codes(sx.list.convert(self.codes))
-        #     if len(entries_invalid) > 0: 
-        #         raise UserError("Los siguientes códigos no son válidos: " + ', '.join(str(item) for item in entries_invalid))
-        #     elif len(entries_valid) > 0: 
-        #         message = "Se crearon los siguientes productos: " + ', '.join(str(item) for item in entries_valid)  
-                
+      
