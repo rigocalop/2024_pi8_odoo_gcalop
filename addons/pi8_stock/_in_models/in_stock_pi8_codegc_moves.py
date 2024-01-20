@@ -9,48 +9,6 @@ from ..pi8 import zlog, logger, sx, sy, hlog
 class in_stock_pi8_codegc_moves(models.AbstractModel):
     _name = 'in.stock.pi8.codegc.moves'
     _description = 'Modelo Base GCALOP'
-    
-    @classmethod
-    @hlog.hlog_function()
-    def _parse_to_codegc_moves__from_text_codes(cls, list_text_codes, **kwargs):
-        # Limpiar y preparar los códigos de texto
-        mapping_dict = { 'product_uom_qty': 'qty', 'default_code': 'code', 'lot_name': 'lot','entry': 'entry'}
-        default_values = { 'product_id': None, 'lot_id': None, 'product_uom': None, 'name': None, 'codegc': None, 'isvalid': True, 'isvalid_code': True, 'isvalid_serial': True, "iscreated_product": False,"iscreated_lot": False }
-        codegc_moves, invalid_entries = sy.EntryCodeLot.processEntryTextCodes(list_text_codes, default_values, mapping_dict)
-        return codegc_moves, invalid_entries
-
-    @hlog.hlog_function()
-    def _update_codegc_moves__codegc_info_and_validate(self, codegc_moves):
-        for code_detail in codegc_moves:
-            default_code = code_detail['default_code']
-            # Obtener la información detallada del código GC
-            codegc_info = self.env["in.stock.pi8.codegc"].get_codegc(default_code)
-            if codegc_info:
-                # Actualizar el diccionario con la información obtenida
-                code_detail['codegc'] = codegc_info
-                lot_name = code_detail['lot_name']
-                name = codegc_info['linea']['name']
-                is_valid = True
-                is_valid_code = sx.base36.validate(default_code)
-                is_valid_serial = True
-
-                if lot_name: 
-                    is_valid_lot_name = sy.codegc.validate_lot_name(default_code, lot_name)
-                is_valid = is_valid_code and is_valid_lot_name
-                
-                if not is_valid:
-                    logger.warning(f"Invalid **lot_name**: {lot_name}") 
-                
-                # Actualizar el diccionario con los resultados de la validación
-                code_detail['name'] = codegc_info['linea']['name']
-                code_detail['isvalid'] = is_valid
-                code_detail['isvalid_code'] = is_valid_code
-                code_detail['isvalid_serial'] = is_valid_lot_name
-            else:
-                code_detail['isvalid'] = False
-                code_detail['isvalid_code'] = False
-                logger.warning(f"No se encontró información para el código GC: {default_code}")
-        return codegc_moves
 
     @hlog.hlog_function()
     def _create_products__get_product_vals(self, codegc):
@@ -73,9 +31,6 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
             'tracking': 'none'
         }
 
-        # Agregar el campo 'barcode' si es la versión Enterprise
-        if odoo.release.version_info[4] == 'e':
-            product_vals['barcode'] = codegc
         return product_vals
     
     
@@ -183,8 +138,9 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
     
     @hlog.hlog_superfunc()
     def superfunc_codegc_moves__from_list_text_codes(self, list_text_codes, fields = None):
-        codegc_moves, invalid_entries = self._parse_to_codegc_moves__from_text_codes(list_text_codes)
-        # Actualizar información de product_id y lot_id
+        # Procesar los códigos de texto
+        default_values = { 'product_id': None, 'lot_id': None, 'product_uom': None, 'name': None, 'codegc': None, 'isvalid': True, 'isvalid_code': True, 'isvalid_serial': True, "iscreated_product": False,"iscreated_lot": False }
+        codegc_moves, invalid_entries = sy.EntryCodeLot.processEntryTextCodes(list_text_codes, default_values, mapping_dict = { 'product_uom_qty': 'qty', 'default_code': 'code', 'lot_name': 'lot','entry': 'entry'}, validation_function=self.env["in.stock.pi8.codegc"].valid)
         
         # Actualizar información desde 'product.product' para los casos en que no se encuentre el 'product.product'
         codegc_moves = sy.OdooModel.joinListDict(self.env, codegc_moves,  'default_code',  { 'default_code': not None }, 
@@ -201,9 +157,6 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
             odoo_model_name='product.product', odoo_model_field_on='default_code', model_retreive_fields=['id', 'default_code', 'uom_id'],
             mapping_fields={'product_id': 'id', 'default_code': 'default_code','product_uom': 'uom_id[0]'})
         
-        
-        codegc_moves = self._update_codegc_moves__codegc_info_and_validate(codegc_moves)
-        self._update_invalid_entries(codegc_moves, invalid_entries)
         stats = {}
         stats['entries_valids'] = sx.XList.count_matches(codegc_moves, 'isvalid', True)
         stats['entries_invalids'] = sx.XList.count_matches(codegc_moves, 'isvalid', False) + len(invalid_entries)

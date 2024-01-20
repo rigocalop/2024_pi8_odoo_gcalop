@@ -81,12 +81,13 @@ class sy_EntryCodeLot:
 
 
     @classmethod
-    def processEntryTextCodes(cls, entry_textcodes, default_values=None, mapping_dict=None):
+    def processEntryTextCodes(cls, entry_textcodes, default_values=None, mapping_dict=None, validation_function=None):
         """
         Procesa una lista de códigos de texto de entrada y los clasifica como válidos o inválidos.
         :param entry_textcodes: Lista de cadenas de texto, cada una con formatos como 'codigo$lote*cantidad' o 'codigo&lote*cantidad'.
         :param default_values: Valores iniciales por defecto para aplicar a cada entrada antes de la expansión.
         :param mapping_dict: Diccionario de mapeo para asignar campos de las entradas expandidas a nuevos nombres de campos.
+        :param validation_function: Función opcional para validar el 'default_code'.
         :return: Dos listas: la primera con las entradas válidas y la segunda con las entradas inválidas.
         """
         valid_entries = []
@@ -99,21 +100,16 @@ class sy_EntryCodeLot:
                 expanded_entry = cls.expandEntryTextCode(text_code)
                 entry.update(expanded_entry)
 
-                code = entry['code']
-                lot = entry['lot']
-                if code and not cls.validate_CODE(code):
-                    raise ExceptionEntryCodeLot('Código inválido')
-                if lot and not cls.validate_LOT(code, lot):
-                    raise ExceptionEntryCodeLot('LOT inválido')
-
                 # Aplicar el mapeo si está disponible
                 if mapping_dict:
                     mapped_entry = {new_key: entry[old_key] for new_key, old_key in mapping_dict.items() if old_key in expanded_entry}
                     entry.update(mapped_entry)
-                    
-                else:
-                    entry.update(expanded_entry)
 
+                # Validar 'default_code' si la función de validación está disponible
+                if validation_function and 'default_code' in entry:
+                    is_valid = validation_function(entry['default_code'])
+                    if not is_valid:
+                        raise ExceptionEntryCodeLot('default_code inválido')
                 valid_entries.append(entry)
 
             except ExceptionEntryCodeLot as e:
