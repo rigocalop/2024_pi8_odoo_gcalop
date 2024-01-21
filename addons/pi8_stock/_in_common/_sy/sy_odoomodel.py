@@ -1,7 +1,10 @@
 from .._sx import lib_sx as sx
 from ..zlogger_handlers import *
+from odoo import models
 class sy_OdooModel:
-    
+    #def Search(cls, env, model_name, search_field, sortend, retrieve_fields=None):
+    #def SearchSimpleIN(cls, env, model_name, search_field, search_values, retrieve_fields=None):
+    #JointLeftIntoListDict
     @classmethod
     @hlog_atomic(enable=True,resalt=True)
     def find_records_by_values(cls, env, model_name, search_field, search_values, retrieve_fields=None):
@@ -18,7 +21,9 @@ class sy_OdooModel:
         model = env[model_name]
         domain = [(search_field, 'in', search_values)]
 
-        records = model.search(domain)
+        records = []
+        if isinstance(model, models.Model):
+            records = model.search(domain)
 
         if retrieve_fields:
             # Procesar campos para extraer los nombres de campos originales si se especifica un cambio de nombre
@@ -30,7 +35,7 @@ class sy_OdooModel:
 
     @classmethod
     @hlog_atomic(enable=True,resalt=False, compact=False)
-    def joinListDict(cls, env, target_data, target_field_on, target_filtering_params, odoo_model_name, odoo_model_field_on, model_retreive_fields, mapping_fields):
+    def joinListDict(cls, env, left_data, target_field_on, target_filtering_params, odoo_model_name, odoo_model_field_on, model_retreive_fields, mapping_fields):
         """
         Actualiza una lista de diccionarios con datos provenientes de un modelo de Odoo.
 
@@ -45,12 +50,12 @@ class sy_OdooModel:
         :return: Lista actualizada de diccionarios.
         """
         # Obtener los valores únicos de target_field_on que cumplan con las condiciones de filtro
-        search_values = sx.XListDict.distinct_values(target_data, target_field_on, **target_filtering_params)
+        search_values = sx.XListDict.distinct_values(left_data, target_field_on, **target_filtering_params)
 
         # Buscar los registros correspondientes en el modelo de Odoo
         reference_data = cls.find_records_by_values(env, odoo_model_name, odoo_model_field_on, search_values, model_retreive_fields)
 
         # Fusionar los datos de los registros de Odoo en la lista de diccionarios original
-        updated_list =  sx.XListDict.join(target_data, target_field_on, reference_data, odoo_model_field_on, mapping_fields)
+        updated_list =  sx.XListDict.join(left_data, target_field_on, reference_data, odoo_model_field_on, mapping_fields)
 
         return updated_list
