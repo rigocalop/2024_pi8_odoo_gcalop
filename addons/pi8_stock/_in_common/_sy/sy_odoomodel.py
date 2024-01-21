@@ -1,6 +1,9 @@
 from .._sx import lib_sx as sx
+from ..zlogger_handlers import *
 class sy_OdooModel:
+    
     @classmethod
+    @hlog_atomic(enable=True,resalt=True)
     def find_records_by_values(cls, env, model_name, search_field, search_values, retrieve_fields=None):
         """
         Encuentra registros en un modelo de Odoo basándose en una lista de valores para un campo específico, con la opción de especificar campos para recuperar.
@@ -26,6 +29,7 @@ class sy_OdooModel:
 
 
     @classmethod
+    @hlog_atomic(enable=True,resalt=False, compact=False)
     def joinListDict(cls, env, target_data, target_field_on, target_filtering_params, odoo_model_name, odoo_model_field_on, model_retreive_fields, mapping_fields):
         """
         Actualiza una lista de diccionarios con datos provenientes de un modelo de Odoo.

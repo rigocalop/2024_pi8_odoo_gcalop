@@ -1,4 +1,5 @@
 import json
+from ..zlogger_handlers import *
 class sx_XListDict:
     # @classmethod
     # def getDistinctKeys(cls, list_dicts, key_field, **conditions):
@@ -20,6 +21,7 @@ class sx_XListDict:
     #     return list(unique_values)
     
     @classmethod
+    @hlog_atomic(enable=True,resalt=True)
     def join(cls, target_data, target_field_on, reference_data, reference_field_on, mapping_fields):
         """
         Realiza una operación de 'join' entre dos listas de diccionarios basada en claves coincidentes.
@@ -58,6 +60,7 @@ class sx_XListDict:
         return target_data
 
     @classmethod
+    @hlog_function(enable=True,resalt=True, compact=False)
     def distinct_values(cls, items_list, distinct_key, **filtering_params):
         """
         Recopila valores distintos para una clave dada de una lista de diccionarios, utilizando parámetros de filtrado.
@@ -68,8 +71,14 @@ class sx_XListDict:
         :return: Lista de valores distintos que cumplen con los parámetros.
         """
         # Filtrar la lista de diccionarios según los parámetros de filtrado proporcionados
+        
+        logger = ZLogger.get_logger()
+        logger.info('items_list: ' + json.dumps(items_list), **filtering_params)
         filtered_list = [item for item in items_list if all(
-            item.get(cond) != None if value == 'not None' else item.get(cond) == value
+            (value == 'None' and item.get(cond) is None) or
+            (value == '#empty' and not item.get(cond)) or
+            (value == '#not_empty' and item.get(cond)) or
+            (value not in ['None', '#empty', '#not_empty'] and item.get(cond) == value)
             for cond, value in filtering_params.items())]
 
         # Obtener valores distintos para la clave dada

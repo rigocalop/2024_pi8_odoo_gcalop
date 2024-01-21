@@ -92,6 +92,7 @@ class in_stock_pi8_codegc(models.TransientModel):
             logger.warning(f"Código GC inválido o falta información relacionada: {codegc}")
         return to_return
     
+    @hlog.hlog_function()
     def valid(self, codegc):
         codegc = self.get_codegc(codegc)
         return codegc is not None
