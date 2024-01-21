@@ -14,8 +14,8 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
     def sy_OdooCodeGC_EnsureCodeLot(self, _textcodes):
         default_values = { 'product_id': None, 'lot_id': None }
         codes, invalid_entries = sy.EntryCodeLot.processEntryTextCodes(_textcodes, default_values, None, validation_function = self.env["in.stock.pi8.codegc"].valid)
-        list_CodeLot = sy.OdooModel.joinListDict(self.env, codes,  'lot',  {'lot': '#not_empty'}, odoo_model_name='stock.lot', odoo_model_field_on='name', model_retreive_fields=['id', 'name', 'product_id'], mapping_fields= {'lot_id': 'id', 'product_id': 'product_id[0]'})
-        list_CodeLot = sy.OdooModel.joinListDict(self.env, codes,  'code',  {'code': '#not_empty'}, odoo_model_name='product.product', odoo_model_field_on='default_code', model_retreive_fields=['id', 'default_code'], mapping_fields= {'product_id': 'id' })
+        list_CodeLot = sy.OdooModel.JoinLeft(self.env, codes,  'lot',  {'lot': '#not_empty'}, model_name='stock.lot', model_field_on='name', model_retreive_fields=['id', 'name', 'product_id'], mapping_fields= {'lot_id': 'id', 'product_id': 'product_id[0]'})
+        list_CodeLot = sy.OdooModel.JoinLeft(self.env, codes,  'code',  {'code': '#not_empty'}, model_name='product.product', model_field_on='default_code', model_retreive_fields=['id', 'default_code'], mapping_fields= {'product_id': 'id' })
 
         
         
@@ -60,20 +60,20 @@ class in_stock_pi8_codegc_moves(models.AbstractModel):
         # ACTUALIZAR_PRODUCT_ID, LOT_ID
 
         # Actualizar información desde 'stock.lot' para los casos en que no se encuentre el lot_name
-        codegc_moves = sy.OdooModel.joinListDict(self.env, codegc_moves,  'lot_name',  { 'lot_name': not None },
-            odoo_model_name='stock.lot', odoo_model_field_on='name', model_retreive_fields=['id', 'name', 'product_id'], 
+        codegc_moves = sy.OdooModel.JoinLeft(self.env, codegc_moves,  'lot_name',  { 'lot_name': not None },
+            model_name='stock.lot', model_field_on='name', model_retreive_fields=['id', 'name', 'product_id'], 
             mapping_fields= {'lot_id': 'id', 'product_id': 'product_id[0]'})     
         
         # Actualizar información desde 'product.product' para los casos en que no se encuentre el 'product.product'
-        codegc_moves = sy.OdooModel.joinListDict(self.env, codegc_moves,  'default_code',  { 'default_code': not None }, 
-            odoo_model_name='product.product', odoo_model_field_on='default_code', model_retreive_fields=['id', 'default_code', 'uom_id'], 
+        codegc_moves = sy.OdooModel.JoinLeft(self.env, codegc_moves,  'default_code',  { 'default_code': not None }, 
+            model_name='product.product', model_field_on='default_code', model_retreive_fields=['id', 'default_code', 'uom_id'], 
             mapping_fields= {'id': 'product_id', 'product_uom': 'uom_id'})
         
 
         
         # # Actualizar información desde 'product.product' para los casos en que no se encuentre el default_code
-        # codegc_moves = sy.OdooModel.joinListDict(self.env, codegc_moves, 'default_code',  {'product_id': not None, 'default_code': None},
-        #     odoo_model_name='product.product', odoo_model_field_on='default_code', model_retreive_fields=['id', 'default_code', 'uom_id'],
+        # codegc_moves = sy.OdooModel.JoinLeft(self.env, codegc_moves, 'default_code',  {'product_id': not None, 'default_code': None},
+        #     model_name='product.product', model_field_on='default_code', model_retreive_fields=['id', 'default_code', 'uom_id'],
         #     mapping_fields={'product_id': 'id', 'default_code': 'default_code','product_uom': 'uom_id[0]'})
         
         stats = {}
