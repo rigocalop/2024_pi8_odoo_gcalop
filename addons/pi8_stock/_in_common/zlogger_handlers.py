@@ -29,7 +29,7 @@ def base_execute_and_log(func, args, kwargs, enable, compact, resalt, demo_retur
                     result = func(*args, **kwargs)
                     _logger.setLevel(original_log_level)
                     _logger.returns(log_title, to_return_function=result)
-                    if (resalt): ZLogger.log_common(_logger, LOG_LEVEL_FEND_RESALT, log_title, 0, *args, **kwargs)
+                    if (resalt): ZLogger.log_common(_logger, LOG_LEVEL_FEND_RESALT, log_title, 0)
                     else: ZLogger.log_common(_logger, const_LOG_END, log_title, 0, *args, **kwargs)
         return result
     except Exception as e:

@@ -63,7 +63,7 @@ class sy_OdooModel:
 
     @classmethod
     @hlog_atomic(enable=True,resalt=False, compact=False)
-    def JoinLeft(cls, env, left_data, target_field_on, target_filtering_params, model_name, model_field_on, model_retreive_fields, mapping_fields):
+    def JoinLeft(cls, env, left_data, target_field_on, left_list_filtering_params, model_name, model_field_on, model_retreive_fields, mapping_fields):
         """
         Actualiza una lista de diccionarios con datos provenientes de un modelo de Odoo.
 
@@ -77,8 +77,9 @@ class sy_OdooModel:
         :param maping_fields: Diccionario que mapea los campos de target_data a los campos del modelo de Odoo.
         :return: Lista actualizada de diccionarios.
         """
+        left_filtering = {target_field_on: '#not_empty'}
         # Obtener los valores únicos de target_field_on que cumplan con las condiciones de filtro
-        search_values = sx.XListDict.distinct_values(left_data, target_field_on, **target_filtering_params)
+        search_values = sx.XListDict.distinct_values(left_data, target_field_on, **left_list_filtering_params)
 
         # Buscar los registros correspondientes en el modelo de Odoo
         reference_data = cls.SearchIn(env, model_name, model_field_on, search_values, model_retreive_fields)
