@@ -56,10 +56,13 @@ class sx_XList:
         """
         list_text_items = []
         # Verificar si el input es un string
+        if text_items is None:
+            text_items = ''
         if isinstance(text_items, str):
             list_text_items = cls.convert(text_items, separator)
         elif isinstance(text_items, list):
-            list_text_items = text_items
+            # Aquí se agrega la lógica para manejar listas cuyos elementos pueden ser tuplas de un solo valor
+            list_text_items = [item[0] if isinstance(item, tuple) and len(item) == 1 else item for item in text_items]
         else:
             raise Exception(_('La entrada proporcionada no es un string.'))
         return list_text_items

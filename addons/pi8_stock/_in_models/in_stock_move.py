@@ -79,7 +79,7 @@ class in_stock_move(models.AbstractModel):
         Crea movimientos de stock a partir de los códigos y cantidades, agregando información de picking.
         """
         # Paso 1: Generar los movimientos básicos de stock
-        stock_moves, invalidcodes, stats = self.env["in.stock.pi8.codegc.moves"].superfunc_codegc_moves__from_list_text_codes(codes_quantities, "product_id,product_uom_qty,product_uom,name")
+        stock_moves, invalidcodes, stats = self.env["in.stock.pi8.codegc.moves"].superfunc_codegc_moves__from_list_text_codes(textcodes=codes_quantities, fields="product_id,product_uom_qty,product_uom,name")
         if invalidcodes:
             raise UserError(f"Códigos inválidos encontrados: {', '.join(invalidcodes)}")
 

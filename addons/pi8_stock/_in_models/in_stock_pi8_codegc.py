@@ -14,6 +14,7 @@ class in_stock_pi8_codegc(models.TransientModel):
     # Diccionario de caché a nivel de clase
     codegc_cache = {}
     
+    #deprecado
     @staticmethod
     @hlog.hlog_function()
     def _get_codegc__get_keys(codegc):
@@ -136,14 +137,14 @@ class in_stock_pi8_codegc(models.TransientModel):
 
 class in_stock_pi8_codegc_controller(http.Controller):
     @http.route('/api/codegc/<codegc>', type='http', methods=['GET'], auth='public', csrf=False)
-    @hlog.hlog_api
+    @hlog.hlog_api()
     def superapi_codegc_get(self, codegc):
         codegc_info = request.env['in.stock.pi8.codegc'].get_codegc(codegc)
         if not codegc_info: return BadRequest(codegc)
         return codegc_info
     
     @http.route('/api/codegc/<codegc>/tracking/generate', type='http', methods=['POST'], auth='public', csrf=False)
-    @hlog.hlog_api
+    @hlog.hlog_api()
     def superapi_codegc_tracking_get(self, codegc, **kwargs):
         model = request.env['in.stock.pi8.codegc']
         codegc_info = model.get_codegc(codegc)

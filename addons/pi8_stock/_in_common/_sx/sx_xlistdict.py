@@ -1,27 +1,21 @@
 import json
 from ..zlogger_handlers import *
 class sx_XListDict:
-    # @classmethod
-    # def getDistinctKeys(cls, list_dicts, key_field, **conditions):
-    #     """
-    #     Obtains unique values for a specific key from a list of dictionaries, applying a filter.
+    @classmethod
+    def ensure_list(cls, value):
+        if not isinstance(value, list):
+            return [value]
+        return value
 
-    #     :param list_dicts: List of dictionaries to process.
-    #     :param key_field: The key for which unique values will be extracted.
-    #     :param conditions: Filtering conditions (key=value).
-    #     :return: A set of unique values that meet the conditions.
-    #     """
-    #     # Filter the list of dictionaries according to the provided conditions
-    #     filtered_list = [detail for detail in list_dicts if all(detail.get(cond) == value for cond, value in conditions.items())]
-
-    #     # Obtain unique values for the given key
-    #     unique_values = set(detail[key_field] for detail in filtered_list if key_field in detail)
-
-    #     # Convert the set of unique values to a list
-    #     return list(unique_values)
+    @classmethod
+    def ensure_string(cls, value):
+        if isinstance(value, list) and len(value) == 1:
+            return value[0]
+        return value  # O manejar el error si value no es una lista con un solo elemento
+    
     
     @classmethod
-    @hlog_atomic(enable=True,resalt=True)
+    @hlog_atomic()
     def join(cls, target_data, target_field_on, reference_data, reference_field_on, mapping_fields):
         """
         Realiza una operación de 'join' entre dos listas de diccionarios basada en claves coincidentes.
@@ -36,6 +30,7 @@ class sx_XListDict:
         :param mapping_fields: Diccionario que mapea los campos objetivo a los campos de referencia.
         :return: Lista actualizada de entradas de datos (datos objetivo).
         """
+        target_field_on = cls.ensure_string(target_field_on)
         # Crear un mapa de referencia utilizando reference_field_on
         reference_map = {record[reference_field_on]: record for record in reference_data if reference_field_on in record}
 
@@ -60,34 +55,8 @@ class sx_XListDict:
         return target_data
 
     @classmethod
-    @hlog_function(enable=True,resalt=True, compact=False)
-    def distinct_values(cls, items_list, distinct_key, **list_filtering_params):
-        """
-        Recopila valores distintos para una clave dada de una lista de diccionarios, utilizando parámetros de filtrado.
-
-        :param items_list: Lista de diccionarios a ser procesados.
-        :param distinct_key: Clave para la cual se recopilarán valores distintos.
-        :param filtering_params: Parámetros de filtrado opcionales (clave=valor).
-        :return: Lista de valores distintos que cumplen con los parámetros.
-        """
-        # Filtrar la lista de diccionarios según los parámetros de filtrado proporcionados
-        
-        logger = ZLogger.get_logger()
-        logger.info('items_list: ' + json.dumps(items_list), **list_filtering_params)
-        filtered_list = [item for item in items_list if all(
-            (value == 'None' and item.get(cond) is None) or
-            (value == '#empty' and not item.get(cond)) or
-            (value == '#not_empty' and item.get(cond)) or
-            (value not in ['None', '#empty', '#not_empty'] and item.get(cond) == value)
-            for cond, value in list_filtering_params.items())]
-
-        # Obtener valores distintos para la clave dada
-        unique_values = set(item[distinct_key] for item in filtered_list if distinct_key in item)
-
-        # Convertir el conjunto de valores distintos en una lista
-        return list(unique_values)
-
-    def _sort(listdict, order_str):
+    @hlog_function(default_error='Error en los parametros de _sort, el formato apropiado es un simple string con el nombre del campo a ordenar, y separados por comas.. Ejemplo: "name asc, date, id desc"')
+    def sort(cls, listdict, order_str):
         """
         Ordena una lista de diccionarios basada en una cadena de ordenamiento.
 
@@ -113,7 +82,17 @@ class sx_XListDict:
             return tuple(keys)
         return sorted(listdict, key=get_sort_key)
 
-    def _filter(listdict, filters):
+
+    def _flatten_tuple_array(array):
+        """ Aplana un array de tuplas de un solo elemento en un array simple. """
+        if not array:
+            return array
+        if isinstance(array[0], tuple):
+            return [item[0] for item in array if len(item) == 1]
+        return array
+
+    @hlog_atomic()
+    def filter(listdict, filters):
         """
         Filtra una lista de diccionarios basándose en una lista de criterios de filtro.
 
@@ -139,20 +118,30 @@ class sx_XListDict:
 
         :return: Lista de diccionarios que cumplen con todos los criterios de filtro.
         """
+        @hlog_atomic(default_error='Error en los parametros de filtro...')
         def meets_conditions(element, filtro):
             field, operator, value = filtro
 
-            # Obtain the value of the field in the element
-            current_value = element
-            for key in field.split('.'):
-                current_value = current_value.get(key) if isinstance(current_value, dict) else getattr(current_value, key, None)
+            # Obtener el valor del campo en el elemento
+            current_value = element[field] if isinstance(element, dict) else element
 
-            # Define what is considered an "empty" value
+            # Definir qué se considera un valor "vacío"
             def is_empty(v):
-                # A value is considered empty if it is None, an empty string, or an empty list
                 return v is None or v == '' or v == []
 
-            # Apply the comparison operator
+            # Definir una función interna para aplanar un array de tuplas de un solo elemento
+            def flatten_tuple_array(array):
+                if not array:
+                    return array
+                if isinstance(array[0], tuple):
+                    return [item[0] for item in array if len(item) == 1]
+                return array
+
+            # Aplanar el array de tuplas para 'in' y 'not in'
+            if operator in ['in', 'not in']:
+                value = flatten_tuple_array(value)
+
+            # Aplicar el operador de comparación
             if operator == '=' and current_value != value:
                 return False
             elif operator == '>' and current_value <= value:
@@ -173,32 +162,13 @@ class sx_XListDict:
             elif operator == 'empty' and not is_empty(current_value):
                 return False
             elif operator == 'not empty' and is_empty(current_value):
-                # Retorna False si el campo está vacío cuando se espera que no lo esté
                 return False
             return True
+        return [element for element in listdict if all(meets_conditions(element=element,filtro=filtro) for filtro in filters)]
 
-        return [element for element in listdict if all(meets_conditions(element, filtro) for filtro in filters)]
-
-    def _fields_mapping(listdict, fields=None, mapping=None):
-        """
-        Extrae y opcionalmente renombra campos de una lista de diccionarios.
-
-        :param listdict: Lista de diccionarios de donde se extraerán los datos.
-        :param fields: Lista de campos a extraer de cada diccionario o None para todos los campos.
-        :param mapping: Diccionario opcional para mapear nombres de campos a nuevos nombres.
-                        Formato: {nombre_campo_original: nuevo_nombre_campo}
-        :return: Lista de diccionarios con campos extraídos y renombrados.
-        """
-
-        def rename_fields(record, fields_to_extract, field_mapping):
-            return {field_mapping.get(field, field): record.get(field) for field in fields_to_extract}
-
-        # Determinar campos a extraer
-        fields_to_extract = fields if fields is not None else (list(listdict[0].keys()) if listdict else [])
-
-        return [rename_fields(element, fields_to_extract, mapping or {}) for element in listdict]
-
-    def _distinct(listdict):
+    @classmethod
+    @hlog_atomic()
+    def distinct(cls, listdict):
         """
         Devuelve una lista de tuplas con combinaciones únicas de valores para todas las claves en una lista de diccionarios.
 
@@ -217,7 +187,8 @@ class sx_XListDict:
     pass
 
     @classmethod
-    def _group_and_process(cls, list_dict, grouping_fields, operations):
+    @hlog_atomic()
+    def group_and_process(cls, listdict, grouping_fields, operations):
         """
         Agrupa y procesa filas en una lista de diccionarios según operaciones especificadas.
 
@@ -228,7 +199,7 @@ class sx_XListDict:
         """
         result = {}
 
-        for item in list_dict:
+        for item in listdict:
             grouping_key = tuple(item[field] for field in grouping_fields)
             if grouping_key not in result:
                 result[grouping_key] = {}
@@ -260,8 +231,9 @@ class sx_XListDict:
                     key + tuple(result[key][new_field] for _, _, new_field in operations)))
             for key in result
         ]
-
-    def _fields_extract(listdict, fields):
+    
+    @classmethod
+    def fields_extract(cls, listdict, fields):
         """
         Extrae campos específicos de una lista de diccionarios.
 
@@ -269,11 +241,14 @@ class sx_XListDict:
         :param fields: Lista de campos a extraer de cada diccionario o None para todos los campos.
         :return: Lista de diccionarios con solo los campos especificados.
         """
+        fields=cls.ensure_list(fields)
         fields_to_extract = fields if fields is not None else (list(listdict[0].keys()) if listdict else [])
 
         return [{field: record.get(field) for field in fields_to_extract} for record in listdict]
 
-    def _fields_rename(listdict, mapping):
+    @classmethod
+    @hlog_atomic()
+    def mapping_fields(cls, listdict, mapping):
         """
         Renombra campos de una lista de diccionarios según un mapeo dado.
 
@@ -287,7 +262,7 @@ class sx_XListDict:
 
 
     @classmethod
-    @hlog_function(enable=True, resalt=True, compact=False)
+    @hlog_function()
     def Select(cls, listdict, fields=None, filters=None, order=None, mapping=None):
         """
         Selecciona y procesa filas en una lista de diccionarios basándose en parámetros de selección.
@@ -304,25 +279,24 @@ class sx_XListDict:
         """
         # Aplicar filtros
         if filters:
-            listdict = cls._filter(listdict, filters)
+            listdict = cls.filter(listdict=listdict, filters=filters)
 
         # Ordenar
         if order:
-            listdict = cls._sort(listdict, order)
+            listdict = cls.sort(listdict=listdict, order_str=order)
 
         # Extraer campos
         if fields:
-            listdict = cls._fields_extract(listdict, fields)
+            listdict = cls.fields_extract(listdict=listdict, fields=fields)
             
         # Renombrar campos
         if mapping:
-            listdict = cls._fields_rename(listdict, mapping)
-
+            listdict = cls.mapping_fields(listdict=listdict, mapping=mapping)
         return listdict
         
     
     @classmethod
-    @hlog_function(enable=True, resalt=True, compact=False)
+    @hlog_function()
     def SelectGroup(cls, listdict, grouping_fields, grouping_operations, filters=None, order=None, mapping=None):
         """
         Selecciona y procesa filas en una lista de diccionarios basándose en parámetros de selección.
@@ -341,30 +315,48 @@ class sx_XListDict:
         """
         # Aplicar filtros
         if filters:
-            listdict = cls._filter(listdict, filters)
+            listdict = cls.filter(listdict, filters)
         
         # Agrupar y procesar
-        listdict = cls._group_and_process(listdict, grouping_fields, grouping_operations)
+        listdict = cls.group_and_process(listdict, grouping_fields, grouping_operations)
 
         # Ordenar
         if order:
-            listdict = cls._sort(listdict, order)
+            listdict = cls.sort(listdict, order)
 
         # Renombrar campos
         if mapping:
-            listdict = cls._fields_rename(listdict, mapping)
+            listdict = cls.mapping_fields(listdict, mapping)
 
         return listdict
 
+    @classmethod
+    @hlog_atomic()
+    def SelectDistinct(cls, listdict, fields=None, filters=None, order=None, mapping=None, remove_empty=False):
+        """
+        Selecciona valores distintos de una lista de diccionarios basándose en parámetros de selección.
 
-# # Ejemplo de uso
-# empleados = [
-#     {'nombre': 'Ana', 'edad': 30, 'habilidades': ['Python', 'Odoo']},
-#     {'nombre': 'Luis', 'edad': 25, 'habilidades': []}
-# ]
+        :param listdict: Lista de diccionarios a procesar.
+        :param fields: Lista de campos a extraer de cada diccionario.
+        :param filters: Lista de filtros a aplicar (campo, operador, valor).
+        :param order: Criterio de ordenación para los resultados.
+        :param mapping: Mapeo de campos para renombrarlos.
+        :param remove_empty: Si es True, elimina los campos que tengan valores vacíos o None.
+        :return: Lista de diccionarios con valores distintos y que cumplen con todos los criterios.
+        """
+        
+    
+    
+        
+        listdict = cls.Select(listdict=listdict, fields=fields, filters=filters, order=order, mapping=mapping)
+        result = cls.distinct(listdict=listdict)
+        
+        if remove_empty:
+            # Filtrar los campos vacíos o None en cada tupla del resultado
+            new_result = []
+            for item in result:
+                filtered_item = tuple(value for value, field in zip(item, fields) if value is not None and value != '')
+                new_result.append(filtered_item)
+            result = new_result
+        return result
 
-# # Definir filtros como lista de tuplas
-# filtros = [('edad', '<=', 30), ('habilidades', 'empty', None)]
-
-# # Aplicar filtros
-# empleados_filtrados = filtrar_lista_por_tuplas(empleados, filtros)

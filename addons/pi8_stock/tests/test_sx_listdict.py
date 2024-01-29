@@ -23,7 +23,7 @@ class test_sx_listdict(TransactionCase):
 
         # Parámetros de prueba
         fields = ['nombre', 'ventas']
-        filters = [('ciudad', '=', 'Madrid')]
+        filters = [('ciudad', '=', 'Madrid'), ('ciudad', 'empty', None)]
         order = 'ventas desc'
         distinct = True
         mapping = {'nombre': 'Nombre', 'ventas': 'Ventas'}

@@ -2,6 +2,7 @@ import logging
 from odoo.http import request, Response
 from werkzeug.exceptions import BadRequest, NotFound
 import json
+import inspect
 
 # Definir nuevos niveles de log
 LOG_LEVEL_MARK = 1
@@ -81,11 +82,108 @@ logging.addLevelName(LOG_LEVEL_ERROR, 'WARINNG')
 logging.addLevelName(LOG_LEVEL_ERROR, 'ERROR')
 logging.addLevelName(LOG_LEVEL_MARK, 'MARK')
 
+class TypeModeRun:
+    Normal = "Normal"   # Modo normal
+    FullExpand = "FullExpand" # Modo de expansión completa
+    Inspect = "Inspect" # Modo de inspección de una especifica funcion para ver su comportamiento
+
+class TypeModeRunInspect:
+    Normal = "Normal"   # Modo Normal
+    Direct = "Direct"   # Mode Directo
+    
+    
+    FullExpand = "FullExpand" # Modo de expansión completa
+    Inspect = "Inspect" # Modo de inspección de una especifica funcion para ver su comportamiento
+
+
+class TypeFunction:
+    Test = 0        # Función de prueba
+    Api = 1     # Función de API
+    SuperFunction = 2   # Función de super funcion importante y principal
+    Function = 3        # Es una funcion esencial, per menos importante que la superfuncion
+    Atomic = 4      # Es una funcion atómica, es decir, que no se puede dividir en funciones más pequeñas. O funcones de usu general.
+    
+
+
+class ModeShowLogger:
+    Hide = 0        # Ocultar el logger
+    Compact = 1     # Mostrar el logger de forma compacta
+    ShowAll = 2     # Mostrar el logger completo
+
+class ZLogger_Vars:
+    RUN_LEVEL = 0           # Nivel de ejecución
+    RUN_COUNTER = 0         # Contador de ejecuciones
+    FLAG_COMPACT = 0   #FLAG DE OCULTAR NIVELES INFERIORES MIENTRAS SE EJECUTE.
+    FLAG_INSPECT = 0    #EVALUA QUE SI SE ESTA EJECUTANDO UN PROCESO DE INSPECT
+    FLAG_INSPECT_HIDE = False    #EVALUA QUE SI SE ESTA EJECUTANDO UN PROCESO DE INSPECT
+    
+    MAX_LEVEL = 3 # Nivel máximo de ejecución para mostrar el logger
+    MODE_RUN = TypeModeRun.Normal    # Modo de ejecución del logger
+    MODE_RUN_INSPECT = TypeModeRunInspect.Direct    # Modo de ejecución del logger
+    INSPECT_FUNCTION = "CreateProducts_FromCodeValues"
+    INSPECT_FUNCTION_HIDE = ["expandEntryTextCode"]
+    INSPECT_FUNCTION_RESALT = ["expandEntryTextCode"]
+    INSPECT_FULLEXPAND = ["expandEntryTextCode"]
+
+
+def evaluate_normal_mode(typeFunction):
+    if typeFunction == TypeFunction.Atomic:
+        return 0
+    elif typeFunction == TypeFunction.Function:
+        return 2 if ZLogger_Vars.MAX_LEVEL >= ZLogger_Vars.RUN_LEVEL else 0
+    else:
+        return 2
+
+def activate_inspect_mode(func_name):
+    if func_name == ZLogger_Vars.INSPECT_FUNCTION:
+        ZLogger_Vars.FLAG_INSPECT = 1
+    else:
+        ZLogger_Vars.FLAG_INSPECT = 0
+    
+def evaluate_showInfoLogger(typeFunction):
+    if ZLogger_Vars.MODE_RUN == TypeModeRun.Normal:
+        return evaluate_normal_mode(typeFunction)
+    elif ZLogger_Vars.MODE_RUN == TypeModeRun.FullExpand:
+        return 2
+    elif ZLogger_Vars.MODE_RUN == TypeModeRun.Inspect:
+        if ZLogger_Vars.FLAG_INSPECT == 1:
+            return 2 # CONFIGURAR EJECUCION
+        else:
+            if (ZLogger_Vars.MODE_RUN_INSPECT==TypeModeRunInspect.Direct):
+                return 0
+            else: 
+                return evaluate_normal_mode(typeFunction)
+            
+    
+    
+            
+        
+        
+        
+        
+        
+            
+    
+    
+    
+# def evaluate_showInfoLogger(typeFunction):
+#     if ZLogger.ModeRun == TypeModeRun.Normal:
+#         if (typeFunction == TypeFunction.Atomic):
+#             return 0
+#         else:
+#             return 1
+#     elif ZLogger.ModeRun == TypeModeRun.FullExpand:
+#         if (typeFunction == TypeFunction.Function):
+#             return 1
+#         else:
+#             return 0   
+    
+    
+
 class ZLogger_CustomFormatter(logging.Formatter):
-    RUN_LEVEL = 0
     @staticmethod
     def create_format(levelno):
-        run_level = ZLogger_CustomFormatter.RUN_LEVEL
+        run_level = ZLogger_Vars.RUN_LEVEL
         level_name = ""
         color_fore = ANSI_RESET
         color_back = ANSI_RESET_BACKGROUND
@@ -196,11 +294,12 @@ class ZLogger_CustomFormatter(logging.Formatter):
         # formatear nivel y run_level
         formatted_level_name = "*{:9}".format(level_name[:9])
         formatted_run_level = "{:02d}".format(run_level)
+        formatted_run_counter = "{:04d}".format(ZLogger_Vars.RUN_COUNTER)
         formatted_indent = '+   ' * (run_level)
         
         # construccion de la linea
         logger = logging.getLogger("testLogger")
-        base_format += f" {formatted_level_name} [{formatted_run_level}.{logger.level}]"
+        base_format += f" {formatted_level_name} [{formatted_run_level}.{formatted_run_counter}.{logger.level}]"
         if is_partial_format: base_format += f"{color_format}{formatted_indent}{prefix} %(message)s{ANSI_RESET}"
         else: base_format = f"{color_format}{base_format}{formatted_indent}{prefix} %(message)s{ANSI_RESET}"
         return base_format
@@ -230,5 +329,9 @@ class ZLogger_CustomFormatter(logging.Formatter):
         count = len(args)
         for value in args:
             index += 1
+            
+            # Verificar si el argumento es una clase o un classmethod
+            if inspect.isclass(value) or (inspect.ismethod(value) and value.__self__ is not None):
+                continue  # I
             formatted_msg = f"{ANSI_RESET_BACKGROUND}{ANSI_GREEN_BRIGHT}{index}:{ANSI_RESET} {ANSI_RESET_BACKGROUND}{ANSI_BLACK}{value}{ANSI_RESET}"
             self._log(LOG_LEVEL_FARG, formatted_msg, (), {})

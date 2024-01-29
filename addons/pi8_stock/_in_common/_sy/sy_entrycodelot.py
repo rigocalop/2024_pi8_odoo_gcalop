@@ -9,8 +9,10 @@ class ExceptionEntryCodeLot(Exception):
         super().__init__(self.message)
 
 class sy_EntryCodeLot:
+    
     @classmethod
-    def expandEntryTextCode(cls, entry_textcode):
+    @hlog_atomic(enable=True, resalt=False, compact=True)
+    def expandEntryTextCode(cls, textcode):
         """
         Extrae el código del producto, la cantidad y el número de lote de un código de texto único.
         :param entry_textcode: Cadena de texto con formatos como 'codigo$lote*cantidad' o 'codigo&lote*cantidad'.
@@ -35,10 +37,10 @@ class sy_EntryCodeLot:
 
         try:
             # Encontrar el primer separador que está presente en entry_textcode
-            separator_used = next((sep for sep in separator if sep in entry_textcode), None)
+            separator_used = next((sep for sep in separator if sep in textcode), None)
 
             if separator_used:
-                parts = entry_textcode.split(separator_used)
+                parts = textcode.split(separator_used)
                 code = parts[0].strip()
                 rest = parts[1] if len(parts) > 1 else ''
 
@@ -51,12 +53,12 @@ class sy_EntryCodeLot:
                 lot = separator_used + lot if lot else None
                 tracking = tracking_map.get(separator_used, 'none')
             else:
-                if '*' in entry_textcode:
-                    code, qty_str = entry_textcode.split('*')
+                if '*' in textcode:
+                    code, qty_str = textcode.split('*')
                     code = code.strip()
                     qty = float(qty_str.strip()) if qty_str else 1.0
                 else:
-                    code = entry_textcode.strip()
+                    code = textcode.strip()
 
             # Eliminar espacios en blanco del nombre del lote
             lot = lot.strip() if lot else None
@@ -69,7 +71,7 @@ class sy_EntryCodeLot:
                 raise ExceptionEntryCodeLot('Tracking es none pero existe un lote')
 
             # Si todo está bien, se devuelve la entrada
-            entry = {'entry': entry_textcode, 'code': code, 'qty': qty, 'lot': lot, 'tracking': tracking}
+            entry = {'entry': textcode, 'code': code, 'qty': qty, 'lot': lot, 'tracking': tracking}
             return entry
 
         except ValueError:
@@ -79,9 +81,9 @@ class sy_EntryCodeLot:
             # Para cualquier otro tipo de excepción
             raise ExceptionEntryCodeLot('Error desconocido. ' + str(e))
 
-
     @classmethod
-    def processEntryTextCodes(cls, entry_textcodes, default_values=None, mapping_dict=None, validation_function=None):
+    @hlog_atomic()
+    def processEntryTextCodes(cls, env, textcodes, default_values=None, mapping_dict=None, validation_function=None):
         """
         Procesa una lista de códigos de texto de entrada y los clasifica como válidos o inválidos.
         :param entry_textcodes: Lista de cadenas de texto, cada una con formatos como 'codigo$lote*cantidad' o 'codigo&lote*cantidad'.
@@ -92,12 +94,13 @@ class sy_EntryCodeLot:
         """
         valid_entries = []
         invalid_entries = []
+        textcodes = sx.XList.ensure(textcodes)
 
-        for text_code in entry_textcodes:
+        for textcode in textcodes:
             try:
                 # Aplicar valores por defecto si están disponibles
                 entry = default_values.copy() if default_values else {}
-                expanded_entry = cls.expandEntryTextCode(text_code)
+                expanded_entry = cls.expandEntryTextCode(textcode=textcode)
                 entry.update(expanded_entry)
 
                 # Aplicar el mapeo si está disponible
@@ -107,13 +110,13 @@ class sy_EntryCodeLot:
 
                 # Validar 'default_code' si la función de validación está disponible
                 if validation_function and 'default_code' in entry:
-                    is_valid = validation_function(entry['default_code'])
+                    is_valid = validation_function(env, entry['default_code'])
                     if not is_valid:
                         raise ExceptionEntryCodeLot('default_code inválido')
                 valid_entries.append(entry)
 
             except ExceptionEntryCodeLot as e:
-                invalid_entries.append({'entry': text_code, 'msg': str(e)})
+                invalid_entries.append({'entry': textcode, 'msg': str(e)})
 
         return valid_entries, invalid_entries
 

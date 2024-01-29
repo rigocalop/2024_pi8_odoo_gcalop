@@ -4,6 +4,10 @@ from .zlogger_formatter import *
 class ZLogger(logging.Logger):
     def __init__(self, name, level=logging.NOTSET):
         super().__init__(name, level)
+        
+    ModeRun = "Normal"
+    
+    
 
     zlog = None
     @staticmethod
@@ -45,9 +49,19 @@ class ZLogger(logging.Logger):
         for handler in root_logger.handlers:
             handler.setLevel(ZLogger._original_root_level)
     
-    def log_common(self, level, msg, modify_run_level = 0, *args, **kwargs):
+    def log_common_init(self, level, msg, *args, **kwargs):
         ZLogger.disable_root_logger()   # Desactivar el logger raíz
-        ZLogger_CustomFormatter.RUN_LEVEL += modify_run_level  # Modificar RUN_LEVEL_TEST según sea necesario
+        ZLogger_Vars.RUN_COUNTER +=1
+        if self.isEnabledFor(level): # Log si el nivel es habilitado
+            self._log(level, msg, (),{})
+        
+        if (args != None): ZLogger_CustomFormatter.log_common__args(self, *args)
+        if (kwargs != None): ZLogger_CustomFormatter.log_common__fkwargs(self, **kwargs)
+        ZLogger.enable_root_logger()   # Desactivar el logger raíz
+    
+    def log_common(self, level, msg, *args, **kwargs):
+        ZLogger.disable_root_logger()   # Desactivar el logger raíz
+        ZLogger_Vars.RUN_COUNTER +=1
         if self.isEnabledFor(level): # Log si el nivel es habilitado
             self._log(level, msg, (),{})
         
@@ -57,35 +71,35 @@ class ZLogger(logging.Logger):
         
 #region "Metodos de log"
     def func_ini(self, msg, resalt=False, *args, **kwargs):
-        if (resalt): self.log_common(LOG_LEVEL_FINI_RESALT, msg, 0, *args, **kwargs)
-        else: self.log_common(LOG_LEVEL_FINI, msg, 0, *args, **kwargs)
+        if (resalt): self.log_common(LOG_LEVEL_FINI_RESALT, msg, *args, **kwargs)
+        else: self.log_common(LOG_LEVEL_FINI, msg, *args, **kwargs)
     def func_end(self, msg, resalt=False, *args, **kwargs):
-        if (resalt): self.log_common(LOG_LEVEL_FEND_RESALT, msg, 0, *args, **kwargs)
-        else: self.log_common(LOG_LEVEL_FEND, msg, 0, *args, **kwargs)
+        if (resalt): self.log_common(LOG_LEVEL_FEND_RESALT, msg, *args, **kwargs)
+        else: self.log_common(LOG_LEVEL_FEND, msg, *args, **kwargs)
     def superfunc_ini(self, msg, *args, **kwargs):
-        self.log_common(LOG_LEVEL_FINI_SUPER, msg, 0, *args, **kwargs)
+        self.log_common(LOG_LEVEL_FINI_SUPER, msg, *args, **kwargs)
     def superfunc_end(self, msg, *args, **kwargs):
-        self.log_common(LOG_LEVEL_FEND_SUPER, msg, 0, *args, **kwargs)        
+        self.log_common(LOG_LEVEL_FEND_SUPER, msg, *args, **kwargs)        
     def test_ini(self, msg, resalt=False):
         if (resalt): self.log_common(LOG_LEVEL_FINI_RESALT, msg)
-        else: self.log_common(LOG_LEVEL_FINI_TEST, msg, 0)        
+        else: self.log_common(LOG_LEVEL_FINI_TEST, msg)        
     def test_end(self, msg, resalt=False):
         if (resalt): self.log_common(LOG_LEVEL_FEND_RESALT, msg)
-        else: self.log_common(LOG_LEVEL_FEND_TEST, msg, 0)        
+        else: self.log_common(LOG_LEVEL_FEND_TEST, msg)        
     def api_ini(self, msg, *args, **kwargs):
-        self.log_common(LOG_LEVEL_FINI_API, msg, 0, args, **kwargs)
+        self.log_common(LOG_LEVEL_FINI_API, msg, args, **kwargs)
     def api_end(self, msg, *args, **kwargs):
-        self.log_common(LOG_LEVEL_FEND_API, msg, 0, *args, **kwargs)
+        self.log_common(LOG_LEVEL_FEND_API, msg, *args, **kwargs)
     def info(self, msg, *args, **kwargs):
-        self.log_common(LOG_LEVEL_INFO, msg, 0, *args, **kwargs)
+        self.log_common(LOG_LEVEL_INFO, msg, *args, **kwargs)
     def warning(self, msg, *args, **kwargs):
-        self.log_common(LOG_LEVEL_WARNING, msg, 0, *args, **kwargs)
+        self.log_common(LOG_LEVEL_WARNING, msg, *args, **kwargs)
     def error(self, msg, *args, **kwargs):
-        self.log_common(LOG_LEVEL_ERROR, msg, 0, *args, **kwargs)
+        self.log_common(LOG_LEVEL_ERROR, msg, *args, **kwargs)
     def debug(self, msg, *args, **kwargs):
-        self.log_common(LOG_LEVEL_DEBUG, msg, 0, *args, **kwargs)                
+        self.log_common(LOG_LEVEL_DEBUG, msg, *args, **kwargs)                
     def returns(self, msg, *args, **kwargs):
-        self.log_common(LOG_LEVEL_RETURNS, msg, 0, *args, **kwargs)                
+        self.log_common(LOG_LEVEL_RETURNS, msg, *args, **kwargs)                
     def fvalue(self, msg, *args, **kwargs):
         if self.isEnabledFor(LOG_LEVEL_VALUE):
             self._log(LOG_LEVEL_VALUE, msg, args, **kwargs)
