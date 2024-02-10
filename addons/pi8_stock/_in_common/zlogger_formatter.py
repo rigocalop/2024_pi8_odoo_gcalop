@@ -153,19 +153,7 @@ def evaluate_showInfoLogger(typeFunction):
                 return 0
             else: 
                 return evaluate_normal_mode(typeFunction)
-            
-    
-    
-            
-        
-        
-        
-        
-        
-            
-    
-    
-    
+
 # def evaluate_showInfoLogger(typeFunction):
 #     if ZLogger.ModeRun == TypeModeRun.Normal:
 #         if (typeFunction == TypeFunction.Atomic):

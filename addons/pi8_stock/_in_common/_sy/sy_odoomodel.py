@@ -1,10 +1,69 @@
 from .._sx import lib_sx as sx
 from ..zlogger_handlers import *
+from ..zlogger import ZLogger
 from odoo import models
 class sy_OdooModel:
-    #def Search(cls, env, model_name, search_field, sortend, retrieve_fields=None):
-    #def SearchSimpleIN(cls, env, model_name, search_field, search_values, retrieve_fields=None):
-    #JointLeftIntoListDict
+
+    @classmethod
+    @hlog_atomic()
+    def records_to_listdict(cls, model, records):
+        """
+        Convierte los registros de Odoo en una lista de diccionarios.
+
+        Args:
+        - model_name: El nombre del modelo de Odoo del que se están recuperando los registros.
+        - records: Registros de Odoo recuperados del modelo.
+
+        Returns:
+        - Una lista de diccionarios que representan los registros en el formato especificado.
+        """
+        listdict = []
+        logger = ZLogger.get_logger()
+        
+        # Obtiene todos los campos del modelo
+        fields = model.fields_get()
+
+        # Extrae los nombres de los campos
+        all_fields = list(fields.keys())
+        
+        # Iterar sobre los registros
+        for record in records:
+            record_dict = {}
+            # Iterar sobre los campos que queremos extraer
+            for field_name in all_fields:
+                # Obtener el valor del campo del registro
+                field_value = record[field_name]
+                # Convertir valores especiales de Odoo a tipos de datos estándar si es necesario
+                try:
+                    if isinstance(field_value, models.Model):
+                        record_dict[field_name] = field_value.id
+                    else:
+                        record_dict[field_name] = field_value
+                except Exception as e:
+                    logger.warning(f"Error al convertir el campo {field_name}: {e}")    
+            listdict.append(record_dict)
+        return listdict
+
+
+    @classmethod
+    @hlog_atomic()
+    def get_model_fields(self, model_name):
+        """
+        Devuelve una lista de los nombres de los campos para un modelo dado en Odoo.
+
+        :param model_name: El nombre técnico del modelo de Odoo del que se extraerán los campos.
+        :return: Lista de nombres de campos del modelo especificado.
+        """
+        # Obtiene una referencia al modelo especificado
+        model = self.env[model_name]
+
+        # Obtiene todos los campos del modelo
+        fields = model.fields_get()
+
+        # Extrae los nombres de los campos
+        field_names = list(fields.keys())
+
+        return field_names
 
     @classmethod
     @hlog_atomic()
@@ -26,16 +85,18 @@ class sy_OdooModel:
         records = []
         if isinstance(model, models.Model):
             records = model.search(domain)
+        
+        listdict = cls.records_to_listdict(model, records)
 
         if fields:
-            # Procesar campos para extraer los nombres de campos originales si se especifica un cambio de nombre
-            fields_to_extract = [field.split(':')[0] for field in fields]
-            records = records.read(fields_to_extract)
-        
-        if mapping_fields:
-            records = sx.XListDict.mapping_fields(listdict=records,mapping=mapping_fields)
+            listdict = sx.XListDict.select_fields(listdict,fields)
 
-        return records
+        if mapping_fields:
+            listdict = sx.XListDict.mapping_fields(listdict=listdict,mapping=mapping_fields, remove_original=True)
+
+
+
+        return listdict
     
     
     @classmethod

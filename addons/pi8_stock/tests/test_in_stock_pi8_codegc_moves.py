@@ -44,9 +44,9 @@ class test_in_stock_pi8_codegc_moves_controller(HttpCase):
         fullcode = sy.codegc.generate_fullcode(codegc, 10, 'serial')
         data = json.dumps({'text_codes': fullcode})
         data = json.dumps([ "0A214584$1cQxKP404T", "0A214584$jiGsiDm446", "0A214584$S2bHzUPR4l"])
-        zlog.ZLogger_Vars.MODE_RUN_INSPECT = TypeModeRunInspect.FullExpand
-        zlog.ZLogger_Vars.MODE_RUN = TypeModeRun.Normal
-        zlog.ZLogger_Vars.INSPECT_FUNCTION ="joinLot_ModeTextCode"
+        zlog.ZLogger_Vars.MODE_RUN_INSPECT = TypeModeRunInspect.Inspect
+        zlog.ZLogger_Vars.MODE_RUN = TypeModeRun.Inspect
+        zlog.ZLogger_Vars.INSPECT_FUNCTION ="SelectDistinct"
         zlog.ZLogger_Vars.INSPECT_FUNCTION_HIDE=[""]
         zlog.ZLogger_Vars.INSPECT_FUNCTION_RESALT = [ "" ]
         

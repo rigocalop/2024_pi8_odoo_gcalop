@@ -38,6 +38,22 @@ def execute_function(func, args, kwargs, _logger, original_log_level, demo_retur
         _logger.setLevel(original_log_level)
         return result
 
+def log_api_init(_logger, func, api_params, api_headers):
+    log_title = f'API ejecutada: {request.httprequest.path} => {func.__module__} . {func.__name__}'
+    _logger.api_ini(log_title,
+                    api_url=request.httprequest.url, 
+                    api_header=api_headers, 
+                    api_params=api_params, 
+                    api_body=request.httprequest.data)
+    return log_title
+
+def log_api_end(_logger, func, response_content, to_return):
+    _logger.returns(f'API ejecutada: {request.httprequest.path} => {func.__module__} . {func.__name__}', 
+                    to_return_api=response_content, 
+                    to_response_api=to_return)
+    _logger.api_end(f'API ejecutada: {request.httprequest.path} => {func.__module__} . {func.__name__}')
+
+
 def base_execute_and_log(func, args, kwargs, enable, compact, resalt, demo_return, log_prefix, const_LOG_INI, const_LOG_END, default_error=None, typeFunction=TypeFunction.Function, fcomment = None):
     _logger = ZLogger.get_logger()
     ZLogger_Vars.RUN_LEVEL += 1  
@@ -86,7 +102,10 @@ def base_execute_and_log(func, args, kwargs, enable, compact, resalt, demo_retur
 
         # Ejecución y logging completo
         if (fcomment != None): _logger.log_common(LOG_LEVEL_DEBUG, fcomment)
-        log_title = log_init(_logger, log_prefix, func, args, kwargs, const_LOG_INI if not resalt else LOG_LEVEL_FINI_RESALT)
+        if (typeFunction == TypeFunction.Api): 
+            log_title = log_api_init(_logger, func, request.httprequest.args, request.httprequest.headers)
+        else: 
+            log_title = log_init(_logger, log_prefix, func, args, kwargs, const_LOG_INI if not resalt else LOG_LEVEL_FINI_RESALT)
         
         
         result = execute_function(func, args, kwargs, _logger, original_log_level, demo_return)
@@ -165,48 +184,54 @@ def hlog_superfunc(enable=True, compact=False, resalt=False, demo_return=None, d
 def hlog_api(enable=True, compact=False, resalt=False, demo_return=None, default_error = None):
     def decorator(func):
         def wrapper(*args, **kwargs):
-            return base_execute_and_log(func=func, args=args, kwargs=kwargs,enable=enable, compact=compact, resalt=resalt,log_prefix="API ejecutada: ", const_LOG_INI=LOG_LEVEL_FINI_API, const_LOG_END=LOG_LEVEL_FEND_API, typeFunction=TypeFunction.Api, default_error=default_error, demo_return=demo_return)
+            to_return = base_execute_and_log(func=func, args=args, kwargs=kwargs, enable=enable, compact=compact, resalt=resalt, log_prefix="API ejecutada: ", const_LOG_INI=LOG_LEVEL_FINI_API, const_LOG_END=LOG_LEVEL_FEND_API, typeFunction=TypeFunction.Api, default_error=default_error, demo_return=demo_return)
+            
+            # Si 'to_return' no es una instancia de Response, crea una nueva respuesta HTTP
+            if not isinstance(to_return, Response):
+                to_return = Response(json.dumps(to_return), content_type='application/json', status=200)
 
+            return to_return
         return wrapper
     return decorator
 
 
 # def hlog_api(func):
 
-# def hlog_api(func):
-#     def wrapper(*args, **kwargs):
-#         ZLogger_Vars.RUN_LEVEL += 1  
-#         run_level = ZLogger_Vars.RUN_LEVEL
-#         to_return = None
-#         try:
-#             _logger = ZLogger.get_logger()
-#             api_params = {key: request.httprequest.args.getlist(key) for key in request.httprequest.args}
-#             api_headers = {key: value for key, value in request.httprequest.headers.items()}
+# def hlog_api(enable=True, compact=False, resalt=False, demo_return=None, default_error = None, fcomment=None):
+#     def decorator(func):
+#         def wrapper(*args, **kwargs):
+#             ZLogger_Vars.RUN_LEVEL += 1  
+#             run_level = ZLogger_Vars.RUN_LEVEL
+#             to_return = None
+#             try:
+#                 _logger = ZLogger.get_logger()
+#                 api_params = {key: request.httprequest.args.getlist(key) for key in request.httprequest.args}
+#                 api_headers = {key: value for key, value in request.httprequest.headers.items()}
 
-#             # api_headers = {key: request.httprequest.headers.getlist(key) for key in request.httprequest.headers}
-#             _logger.api_ini(f'API ejecutada: {request.httprequest.path} => {func.__module__} . {func.__name__}', api_url=request.httprequest.url, api_header=api_headers, api_params=api_params, api_body = request.httprequest.data)
-#             result = func(*args, **kwargs)
-#             response_content = None
-#             status = 200
-#             if isinstance(result, BadRequest):
-#                 response_content = json.dumps(result.description)
-#                 status = 400
-#             else: 
-#                 response_content = json.dumps(result)
-            
-#             to_return = request.make_response(response_content, headers=[('Content-Type', 'application/json')], status=status)                
-#             ZLogger_Vars.RUN_LEVEL = run_level
-#             _logger.returns(f'API ejecutada: {request.httprequest.path} => {func.__module__} . {func.__name__}', to_return_api=response_content, to_response_api=to_return)
-#             _logger.api_end(f'API ejecutada: {request.httprequest.path} => {func.__module__} . {func.__name__}')
-#             ZLogger_Vars.RUN_LEVEL = run_level - 1
-#             return to_return
-#         except Exception as e:
-#             _logger.error(f'Error durante la ejecución de la API: {str(e)}')
-#             response_content = json.dumps({'error': str(e)})
-#             ZLogger_Vars.RUN_LEVEL = run_level - 1
-#             return request.make_response(response_content, headers=[('Content-Type', 'application/json')], status=500)
-#     return wrapper
-
+#                 # api_headers = {key: request.httprequest.headers.getlist(key) for key in request.httprequest.headers}
+#                 _logger.api_ini(f'API ejecutada: {request.httprequest.path} => {func.__module__} . {func.__name__}', api_url=request.httprequest.url, api_header=api_headers, api_params=api_params, api_body = request.httprequest.data)
+#                 result = func(*args, **kwargs)
+#                 response_content = None
+#                 status = 200
+#                 if isinstance(result, BadRequest):
+#                     response_content = json.dumps(result.description)
+#                     status = 400
+#                 else: 
+#                     response_content = json.dumps(result)
+                
+#                 to_return = request.make_response(response_content, headers=[('Content-Type', 'application/json')], status=status)                
+#                 ZLogger_Vars.RUN_LEVEL = run_level
+#                 _logger.returns(f'API ejecutada: {request.httprequest.path} => {func.__module__} . {func.__name__}', to_return_api=response_content, to_response_api=to_return)
+#                 _logger.api_end(f'API ejecutada: {request.httprequest.path} => {func.__module__} . {func.__name__}')
+#                 ZLogger_Vars.RUN_LEVEL = run_level - 1
+#                 return to_return
+#             except Exception as e:
+#                 _logger.error(f'Error durante la ejecución de la API: {str(e)}')
+#                 response_content = json.dumps({'error': str(e)})
+#                 ZLogger_Vars.RUN_LEVEL = run_level - 1
+#                 return request.make_response(response_content, headers=[('Content-Type', 'application/json')], status=500)
+#         return wrapper
+#     return decorator
 
 # def hlog_api(enable=True, compact=False, resalt=False, demo_return=None, default_error = None):
 #     def decorator(func):

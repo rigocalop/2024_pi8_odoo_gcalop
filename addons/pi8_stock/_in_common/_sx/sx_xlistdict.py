@@ -13,6 +13,32 @@ class sx_XListDict:
             return value[0]
         return value  # O manejar el error si value no es una lista con un solo elemento
     
+    # @classmethod
+    # @hlog_atomic()
+    # def select_fields(listdict, fields_to_select):
+    #     """
+    #     Procesa los registros en formato listdict para seleccionar los campos especificados.
+
+    #     Args:
+    #     - listdict: Lista de diccionarios representando los registros.
+    #     - fields_to_select: Lista de nombres de campos a seleccionar.
+
+    #     Returns:
+    #     - Lista de diccionarios representando los registros con solo los campos seleccionados.
+    #     """
+    #     if not fields_to_select:
+    #         return listdict
+
+    #     # Iterar sobre los registros y seleccionar solo los campos especificados
+    #     selected_records = []
+    #     for record in listdict:
+    #         selected_record = {}
+    #         for field in fields_to_select:
+    #             selected_record[field] = record.get(field)
+    #         selected_records.append(selected_record)
+
+    #     return selected_records
+
     
     @classmethod
     @hlog_atomic()
@@ -53,6 +79,25 @@ class sx_XListDict:
                             item[target_field] = matching_record[reference_field]
 
         return target_data
+    
+    
+    
+    @classmethod
+    def extract_field_value(cls, record, field):
+        """
+        Extrae un valor de un campo, manejando campos normales y campos de lista.
+        """
+        if '[' in field and ']' in field:
+            field_name, index = field.split('[')
+            index = int(index.rstrip(']'))
+            if field_name in record and isinstance(record[field_name], (list, tuple)):
+                try:
+                    return record[field_name][index]
+                except IndexError:
+                    return None
+            return None
+        return record.get(field)
+
 
     @classmethod
     @hlog_function(default_error='Error en los parametros de _sort, el formato apropiado es un simple string con el nombre del campo a ordenar, y separados por comas.. Ejemplo: "name asc, date, id desc"')
@@ -233,7 +278,7 @@ class sx_XListDict:
         ]
     
     @classmethod
-    def fields_extract(cls, listdict, fields):
+    def select_fields(cls, listdict, fields):
         """
         Extrae campos específicos de una lista de diccionarios.
 
@@ -248,18 +293,39 @@ class sx_XListDict:
 
     @classmethod
     @hlog_atomic()
-    def mapping_fields(cls, listdict, mapping):
+    def mapping_fields(cls, listdict, mapping, remove_original=False):
         """
-        Renombra campos de una lista de diccionarios según un mapeo dado.
+        Renombra campos de una lista de diccionarios según un mapeo dado y extrae elementos de una tupla si es necesario.
+        Los campos no mencionados en el mapeo se copian directamente. Los campos originales pueden ser eliminados después del mapeo.
 
-        :param list_dict: Lista de diccionarios a procesar.
+        :param listdict: Lista de diccionarios a procesar.
         :param mapping: Diccionario para mapear nombres de campos a nuevos nombres.
-                        Formato: {nombre_campo_original: nuevo_nombre_campo}
-        :return: Lista de diccionarios con campos renombrados.
+                        Formato: {nuevo_nombre_campo: 'nombre_campo_original' o 'nombre_campo_original[index]'}
+        :param remove_original: Si es True, elimina los campos originales después del mapeo.
+        :return: Lista de diccionarios con campos renombrados y elementos de tupla extraídos si es necesario.
         """
-        return [{mapping.get(field, field): value for field, value in record.items()} for record in listdict]
-    
-
+        updated_list = []
+        for record in listdict:
+            new_record = {}
+            for field in record:
+                new_record[field] = record[field]
+            
+            for new_field, original_field in mapping.items():
+                if '[' in original_field and ']' in original_field:
+                    field_name, index = original_field.split('[')
+                    index = int(index.rstrip(']'))
+                    value = record.get(field_name, ())
+                    if isinstance(value, tuple) and len(value) > index:
+                        new_record[new_field] = value[index]
+                    else:
+                        new_record[new_field] = None
+                else:
+                    new_record[new_field] = record.get(original_field)
+                    if remove_original and original_field in new_record:
+                        del new_record[original_field]
+            
+            updated_list.append(new_record)
+        return updated_list
 
     @classmethod
     @hlog_function()
@@ -287,11 +353,14 @@ class sx_XListDict:
 
         # Extraer campos
         if fields:
-            listdict = cls.fields_extract(listdict=listdict, fields=fields)
+            listdict = cls.select_fields(listdict=listdict, fields=fields)
             
         # Renombrar campos
         if mapping:
-            listdict = cls.mapping_fields(listdict=listdict, mapping=mapping)
+            listdict = cls.mapping_fields(listdict=listdict, mapping=mapping, remove_original=True)
+            
+ 
+            
         return listdict
         
     
@@ -344,10 +413,7 @@ class sx_XListDict:
         :param remove_empty: Si es True, elimina los campos que tengan valores vacíos o None.
         :return: Lista de diccionarios con valores distintos y que cumplen con todos los criterios.
         """
-        
-    
-    
-        
+
         listdict = cls.Select(listdict=listdict, fields=fields, filters=filters, order=order, mapping=mapping)
         result = cls.distinct(listdict=listdict)
         
