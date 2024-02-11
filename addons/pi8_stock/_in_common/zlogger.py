@@ -6,8 +6,6 @@ class ZLogger(logging.Logger):
         super().__init__(name, level)
         
     ModeRun = "Normal"
-    
-    
 
     zlog = None
     @staticmethod

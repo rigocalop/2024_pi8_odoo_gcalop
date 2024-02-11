@@ -1,11 +1,22 @@
-from .._sx import lib_sx as sx
+import odoo, json
+
 from ..zlogger_handlers import *
 from odoo import models
 from ..zlogger import ZLogger
-from ..zlogger_handlers import *
-from .._sy.sy_odoomodel import sy_OdooModel
-from .._sy.sy_entrycodelot import sy_EntryCodeLot, ExceptionEntryCodeLot
-class sy_OdooCodeGC:
+from ..zlogger_handlers import hlog_api
+
+from odoo import http, api, fields, models, _
+from odoo.exceptions import UserError
+from odoo.http import request, Response
+from werkzeug.exceptions import BadRequest, NotFound
+
+from .._sy import lib_sy as sy
+from .._sx import lib_sx as sx
+
+
+
+
+class sz_OdooCodeGC:
         
     # Diccionario de caché a nivel de clase
     codegc_cache = {}
@@ -143,7 +154,7 @@ class sy_OdooCodeGC:
     def joinLot_ModeTextCode(cls, env, target_list, field_lot=['lot'], model_fields=['lot_id', 'name', 'product_id'], mapping_fields={'lot_id': 'id', 'product_id': 'product_id[0]'}):
         list_values = sx.XListDict.SelectDistinct(target_list, fields=field_lot, remove_empty=True)
         # reference_data = sy_OdooModel.SearchIn(env, model_name='stock.lot', fields=['id','name','product_id'], search_field='name', search_values=list_values, mapping_fields={'lot_id': 'id', 'product_id': 'product_id[0]'})
-        reference_data = sy_OdooModel.SearchIn(env, model_name='stock.lot', fields=['id','name','product_id'], search_field='name', search_values=list_values, mapping_fields={'lot_id': 'id'})
+        reference_data = sy.OdooModel.SearchIn(env, model_name='stock.lot', fields=['id','name','product_id'], search_field='name', search_values=list_values, mapping_fields={'lot_id': 'id'})
         target_list = sx.XListDict.join(target_list, target_field_on='lot', reference_data=reference_data, reference_field_on='name', mapping_fields={'lot_id': 'lot_id', 'product_id': 'product_id'})
         return target_list
     
@@ -152,7 +163,7 @@ class sy_OdooCodeGC:
     def joinLot_ModeID(cls, env, target_list, field_lot='lot_id', model_fields=['lot', 'product_id'], mapping_fields={'lot': 'name', 'product_id': 'product_id[0]'}):
         # Actualizar información desde 'stock.lot' para los casos en que no se encuentre el lot_name
         list_values = sx.XListDict.SelectDistinct(target_list ,fields=field_lot, remove_empty=True)
-        reference_data = sy_OdooModel.SearchIn(env, model_name='stock.lot',fields=model_fields, search_field='id', search_values=list_values, mapping_fields=mapping_fields)
+        reference_data = sy.OdooModel.SearchIn(env, model_name='stock.lot',fields=model_fields, search_field='id', search_values=list_values, mapping_fields=mapping_fields)
         target_list = sx.XListDict.join(target_list, target_field_on= field_lot, reference_data=reference_data, reference_field_on='id', mapping_fields=mapping_fields)
         return target_list
         
@@ -161,7 +172,7 @@ class sy_OdooCodeGC:
     def joinCode_ModeTextCode(cls, env, target_list, field_code=['code'], model_fields=['product_id', 'default_code'], mapping_fields={'product_id': 'id'}):
         # Actualizar información desde 'stock.lot' para los casos en que no se encuentre el lot_name
         list_values = sx.XListDict.SelectDistinct(listdict=target_list ,fields=field_code, remove_empty=True)
-        reference_data = sy_OdooModel.SearchIn(env, model_name='product.product',fields=model_fields, search_field='default_code', search_values=list_values)
+        reference_data = sy.OdooModel.SearchIn(env, model_name='product.product',fields=model_fields, search_field='default_code', search_values=list_values)
         target_list = sx.XListDict.join(target_list, target_field_on=field_code, reference_data=reference_data, reference_field_on='default_code', mapping_fields=mapping_fields)
         return target_list
 
@@ -170,7 +181,7 @@ class sy_OdooCodeGC:
     def joinCode_ModeID(cls, env, target_list, field_id='product_id', model_fields=['id', 'code, product_oem'], mapping_fields={'code': 'default_code', 'product_oem': 'product.uom_id.id'}):
         # Actualizar información desde 'stock.lot' para los casos en que no se encuentre el lot_name
         list_values = sx.XListDict.SelectDistinct(target_list ,fields=field_id, remove_empty=True)
-        reference_data = sy_OdooModel.SearchIn(env, model_name='product.product',fields=model_fields, search_field='id', search_values=list_values)
+        reference_data = sy.OdooModel.SearchIn(env, model_name='product.product',fields=model_fields, search_field='id', search_values=list_values)
         target_list = sx.XListDict.join(target_list, target_field_on=field_id, reference_data=reference_data, reference_field_on='id', mapping_fields=mapping_fields)
         return target_list
 
@@ -179,7 +190,7 @@ class sy_OdooCodeGC:
     def EnsureCodeLot(cls, env, textcodes):
         logger = ZLogger.get_logger()
         default_values = { 'product_id': None, 'lot_id': None }
-        list_CodeLot, entries_invalids = sy_EntryCodeLot.processEntryTextCodes(env=env, textcodes=textcodes, default_values=default_values, validation_function = cls.ValidCodeGC)
+        list_CodeLot, entries_invalids = sy.EntryCodeLot.processEntryTextCodes(env=env, textcodes=textcodes, default_values=default_values, validation_function = cls.ValidCodeGC)
         # if entries_invalids:
         #     return False, entries_invalids
 
@@ -198,3 +209,31 @@ class sy_OdooCodeGC:
         
         return True, list_CodeLot, entries_invalids
 
+
+    class sz_OdooCodeGC_Controller(http.Controller):
+        @http.route('/api/sz/odoocodegc/ensurecodelot', type='http', methods=['POST'], auth='public', csrf=False)
+        @hlog_api()
+        def superapi_codegc_moves__from_text_codes(self, **kw):
+            fields = kw.get('fields')
+            data = json.loads(request.httprequest.data)
+            textcodes = sx.xobject.tryget(data, 'text_codes')
+            if textcodes: textcodes = sx.XList.ensure(textcodes)
+            else: textcodes = sx.XList.ensure(data)        
+
+            isvalid, entries, entries_invalid = sz_OdooCodeGC.EnsureCodeLot(env=request.env, textcodes=textcodes)
+            
+            # "product_id,lot_id,product_uom_qty,product_uom,name,lot_name")
+            
+        #                    'product_uom': product.uom_id.id,
+        # # #                 'name': product.display_name,
+            if isvalid:
+                stock_moves = sx.XListDict.Select(listdict=entries, fields=["product_id","lot_id","lot_name","product_uom_qty"], mapping={"product_uom_qty": "qty", "lot_name":"lot"})
+                stock_moves = sz_OdooCodeGC.joinCode_ModeID(env=request.env, target_list=stock_moves)
+                # logger.debug(f"entries: {entries}")
+                
+
+                # {'product_id': 421, 'lot_id': 5707, 'entry': '0A214584$1cQxKP404T', 'code': '0A214584', 'qty': 1.0, 'lot': '$1cQxKP404T', 'tracking': 'serial'},
+                return { 'message': 'The products and corresponding lots have been created.', 'entries': entries } 
+            else:
+                return BadRequest({ 'error':  'Bad Request', 'message': 'Invalid entries found', 'entries': entries_invalid })
+        

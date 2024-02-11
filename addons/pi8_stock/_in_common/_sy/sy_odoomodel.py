@@ -6,7 +6,7 @@ class sy_OdooModel:
 
     @classmethod
     @hlog_atomic()
-    def records_to_listdict(cls, model, records):
+    def _records_to_listdict(cls, model, records):
         """
         Convierte los registros de Odoo en una lista de diccionarios.
 
@@ -44,27 +44,6 @@ class sy_OdooModel:
             listdict.append(record_dict)
         return listdict
 
-
-    @classmethod
-    @hlog_atomic()
-    def get_model_fields(self, model_name):
-        """
-        Devuelve una lista de los nombres de los campos para un modelo dado en Odoo.
-
-        :param model_name: El nombre técnico del modelo de Odoo del que se extraerán los campos.
-        :return: Lista de nombres de campos del modelo especificado.
-        """
-        # Obtiene una referencia al modelo especificado
-        model = self.env[model_name]
-
-        # Obtiene todos los campos del modelo
-        fields = model.fields_get()
-
-        # Extrae los nombres de los campos
-        field_names = list(fields.keys())
-
-        return field_names
-
     @classmethod
     @hlog_atomic()
     def SearchIn(cls, env, model_name, fields, search_field, search_values, mapping_fields=None):
@@ -86,7 +65,7 @@ class sy_OdooModel:
         if isinstance(model, models.Model):
             records = model.search(domain)
         
-        listdict = cls.records_to_listdict(model, records)
+        listdict = cls._records_to_listdict(model, records)
 
         if fields:
             listdict = sx.XListDict.select_fields(listdict,fields)
@@ -101,7 +80,7 @@ class sy_OdooModel:
     
     @classmethod
     @hlog_atomic(enable=True,resalt=True)
-    def SearchNotIn(cls, env, model_name, fields, search_field, search_values):
+    def SearchNotIn(cls, env, model_name, fields, search_field, search_values, mapping_fields=None):
         """
         Encuentra registros en un modelo de Odoo basándose en una lista de valores que "no coincidan" para un campo específico, con la opción de especificar campos para recuperar.
 
@@ -113,17 +92,19 @@ class sy_OdooModel:
         :return: Lista de diccionarios representando los registros encontrados, conteniendo únicamente los campos especificados si se proporcionan.
         """
         model = env[model_name]
+        search_values = sx.XList.ensure(search_values)
         domain = [(search_field, 'not in', search_values)]
 
         records = []
         if isinstance(model, models.Model):
             records = model.search(domain)
+        
+        listdict = cls._records_to_listdict(model, records)
 
         if fields:
-            # Procesar campos para extraer los nombres de campos originales si se especifica un cambio de nombre
-            fields_to_extract = [field.split(':')[0] for field in fields]
-            return records.read(fields_to_extract)
-        else:
-            return records
+            listdict = sx.XListDict.select_fields(listdict,fields)
+
+        if mapping_fields:
+            listdict = sx.XListDict.mapping_fields(listdict=listdict, mapping=mapping_fields, remove_original=True)
 
  

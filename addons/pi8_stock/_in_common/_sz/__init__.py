@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-from .sz_odoocodegc import sy_OdooCodeGC
+from .sz_odoocodegc import sz_OdooCodeGC
 
 class lib_sz:
-    OdooCodeGC = sy_OdooCodeGC
+    OdooCodeGC = sz_OdooCodeGC
     
 

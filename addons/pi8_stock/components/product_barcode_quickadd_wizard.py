@@ -1,6 +1,6 @@
 from odoo import models, fields, api
 from odoo.exceptions import UserError
-from ..pi8 import zlog, sx, sy, hlog
+from ..pi8 import sx
 from collections import defaultdict
 
 class product_barcode_quickadd_wizard(models.TransientModel):
