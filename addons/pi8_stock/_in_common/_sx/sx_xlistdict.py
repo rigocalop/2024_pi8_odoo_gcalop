@@ -276,20 +276,32 @@ class sx_XListDict:
                     key + tuple(result[key][new_field] for _, _, new_field in operations)))
             for key in result
         ]
-    
+        
     @classmethod
+    @hlog_atomic()
     def select_fields(cls, listdict, fields):
         """
-        Extrae campos específicos de una lista de diccionarios.
+        Extrae campos específicos de una lista de diccionarios. Lanza un error si un campo especificado no existe.
 
-        :param list_dict: Lista de diccionarios de donde se extraerán los datos.
-        :param fields: Lista de campos a extraer de cada diccionario o None para todos los campos.
+        :param listdict: Lista de diccionarios de donde se extraerán los datos.
+        :param fields: Lista de campos a extraer de cada diccionario. Si es None, extrae todos los campos.
         :return: Lista de diccionarios con solo los campos especificados.
+        :raises FieldNotFoundError: Si algún campo especificado no existe en uno de los diccionarios.
         """
-        fields=cls.ensure_list(fields)
-        fields_to_extract = fields if fields is not None else (list(listdict[0].keys()) if listdict else [])
+        if not listdict:
+            return []
 
-        return [{field: record.get(field) for field in fields_to_extract} for record in listdict]
+        # Asegura que 'fields' sea una lista
+        fields = cls.ensure_list(fields)
+        if fields is None:
+            fields = list(listdict[0].keys())
+
+        # Verifica la existencia de los campos
+        for field in fields:
+            if all(field not in record for record in listdict):
+                raise Exception("El campo " + field + " no existe en uno de los diccionarios.")
+
+        return [{field: record[field] for field in fields} for record in listdict]
 
     @classmethod
     @hlog_atomic()
@@ -401,20 +413,22 @@ class sx_XListDict:
 
     @classmethod
     @hlog_atomic()
-    def SelectDistinct(cls, listdict, fields=None, filters=None, order=None, mapping=None, remove_empty=False):
+    def SelectDistinct(cls, listdict, fields=None, filters=None, order=None, remove_empty=True, return_tuples=True):
         """
         Selecciona valores distintos de una lista de diccionarios basándose en parámetros de selección.
 
         :param listdict: Lista de diccionarios a procesar.
         :param fields: Lista de campos a extraer de cada diccionario.
         :param filters: Lista de filtros a aplicar (campo, operador, valor).
-        :param order: Criterio de ordenación para los resultados.
-        :param mapping: Mapeo de campos para renombrarlos.
+        :param order: Cadena que define cómo se debe ordenar la lista.
+            Formato: 'campo1 asc, campo2 desc, ...'
+            'asc' para orden ascendente (por defecto),
+            'desc' para orden descendente.
         :param remove_empty: Si es True, elimina los campos que tengan valores vacíos o None.
         :return: Lista de diccionarios con valores distintos y que cumplen con todos los criterios.
         """
 
-        listdict = cls.Select(listdict=listdict, fields=fields, filters=filters, order=order, mapping=mapping)
+        listdict = cls.Select(listdict=listdict, fields=fields, filters=filters, order=order)
         result = cls.distinct(listdict=listdict)
         
         if remove_empty:
@@ -424,5 +438,26 @@ class sx_XListDict:
                 filtered_item = tuple(value for value, field in zip(item, fields) if value is not None and value != '')
                 new_result.append(filtered_item)
             result = new_result
+            
+        if return_tuples==False:
+            result = cls.from_tuples(result, fields)
+
         return result
 
+
+    @classmethod
+    @hlog_atomic()
+    def from_tuples(cls, tuples_result, fields):
+        """
+        Convierte una lista de tuplas a una lista de diccionarios, basándose en los campos especificados.
+
+        :param tuples_result: Lista de tuplas, donde cada tupla contiene valores para los campos especificados.
+        :param fields: Lista de campos que corresponden a los valores en las tuplas.
+        :return: Lista de diccionarios, donde cada diccionario representa un registro con los campos especificados.
+        """
+        listdict = []
+        for tup in tuples_result:
+            # Crear un diccionario para la tupla actual, usando los campos como claves
+            dict_item = {field: value for field, value in zip(fields, tup)}
+            listdict.append(dict_item)
+        return listdict

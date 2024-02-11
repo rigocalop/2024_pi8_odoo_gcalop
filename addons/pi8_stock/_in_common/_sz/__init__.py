@@ -5,3 +5,5 @@ class lib_sz:
     OdooCodeGC = sz_OdooCodeGC
     
 
+    
+

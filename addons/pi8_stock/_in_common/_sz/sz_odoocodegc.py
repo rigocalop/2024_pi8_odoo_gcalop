@@ -1,19 +1,8 @@
-import odoo, json
-
 from ..zlogger_handlers import *
-from odoo import models
+from odoo import models, _
 from ..zlogger import ZLogger
-from ..zlogger_handlers import hlog_api
-
-from odoo import http, api, fields, models, _
-from odoo.exceptions import UserError
-from odoo.http import request, Response
-from werkzeug.exceptions import BadRequest, NotFound
-
 from .._sy import lib_sy as sy
 from .._sx import lib_sx as sx
-
-
 
 
 class sz_OdooCodeGC:
@@ -138,8 +127,8 @@ class sz_OdooCodeGC:
         lots_to_create = []
         for item in list_lots:
             new_lot = {
-                'name': item['lot'],
-                'product_id': item['product_id']
+                'product_id': item['product_id'],
+                'name': item['lot']
             }
             lots_to_create.append(new_lot)
             logger.warning(f"LOTs Agregados: {item['lot']}")
@@ -169,7 +158,7 @@ class sz_OdooCodeGC:
         
     @classmethod
     @hlog_function()
-    def joinCode_ModeTextCode(cls, env, target_list, field_code=['code'], model_fields=['product_id', 'default_code'], mapping_fields={'product_id': 'id'}):
+    def joinCode_ModeTextCode(cls, env, target_list, field_code=['code'], model_fields=['id', 'default_code'], mapping_fields={'product_id': 'id'}):
         # Actualizar información desde 'stock.lot' para los casos en que no se encuentre el lot_name
         list_values = sx.XListDict.SelectDistinct(listdict=target_list ,fields=field_code, remove_empty=True)
         reference_data = sy.OdooModel.SearchIn(env, model_name='product.product',fields=model_fields, search_field='default_code', search_values=list_values)
@@ -178,10 +167,33 @@ class sz_OdooCodeGC:
 
     @classmethod
     @hlog_function()
-    def joinCode_ModeID(cls, env, target_list, field_id='product_id', model_fields=['id', 'code, product_oem'], mapping_fields={'code': 'default_code', 'product_oem': 'product.uom_id.id'}):
-        # Actualizar información desde 'stock.lot' para los casos en que no se encuentre el lot_name
+    def joinCode_ModeID(cls, env, target_list, field_id='product_id', model_fields=['id', 'code', 'uom_id'], mapping_fields={'code': 'default_code', 'product_oem': 'uom_id'}):
+        """
+        Actualiza la información de una lista de diccionarios con datos referenciados desde el modelo 'product.product' en Odoo.
+
+        Esta función se utiliza para enriquecer una lista de diccionarios (target_list) con información adicional obtenida desde el modelo 'product.product', basándose en un campo de identificación común.
+
+        Args:
+            cls: La clase a la que pertenece este método. Debe ser una clase derivada de models.Model de Odoo.
+            env: El entorno de Odoo utilizado para acceder a los registros de la base de datos.
+            target_list (list of dict): Una lista de diccionarios que representa los registros que necesitan ser actualizados.
+            field_id (str, opcional): El campo en `target_list` que se utiliza para hacer la correspondencia con los registros en 'product.product'. Por defecto es 'product_id'.
+            model_fields (list of str, opcional): Los campos del modelo 'product.product' que se desean recuperar. Por defecto incluye ['id', 'code, product_oem'].
+            mapping_fields (dict, opcional): Un diccionario que mapea los campos de 'product.product' a los campos en `target_list`. Esto permite renombrar los campos obtenidos del modelo a los nombres deseados en la lista de destino.
+
+        Returns:
+            list of dict: La lista actualizada de diccionarios con la información adicional de 'product.product' incorporada.
+
+        Ejemplo:
+            Supongamos que `target_list` es una lista de diccionarios donde cada uno representa un lote de producto, y queremos enriquecerla con el código por defecto ('default_code') y el ID de la unidad de medida ('uom_id') de cada producto referenciado por 'product_id':
+
+            >>> target_list = [{'product_id': 1, 'lot_name': 'Lote1'}, {'product_id': 2, 'lot_name': 'Lote2'}]
+            >>> enriched_list = joinCode_ModeID(cls, env, target_list)
+            >>> print(enriched_list)
+            # El resultado será `target_list` con los campos 'default_code' y 'product_uom_id' agregados desde 'product.product'.
+        """
         list_values = sx.XListDict.SelectDistinct(target_list ,fields=field_id, remove_empty=True)
-        reference_data = sy.OdooModel.SearchIn(env, model_name='product.product',fields=model_fields, search_field='id', search_values=list_values)
+        reference_data = sy.OdooModel.SearchIn(env, model_name='product.product', fields=model_fields, search_field='id', search_values=list_values)
         target_list = sx.XListDict.join(target_list, target_field_on=field_id, reference_data=reference_data, reference_field_on='id', mapping_fields=mapping_fields)
         return target_list
 
@@ -198,42 +210,18 @@ class sz_OdooCodeGC:
         cls.joinCode_ModeTextCode(env=env, target_list=list_CodeLot)
         
         # Actualizar información desde 'stock.lot' para los casos en que no se encuentre el lot_name
-        list_to_create = sx.XListDict.SelectDistinct(listdict=list_CodeLot, fields=['code'], filters=[('code', 'not empty', None),('product_id', 'empty', None)])
+        list_to_create = sx.XListDict.SelectDistinct(listdict=list_CodeLot, fields=['code'], filters=[('code', 'not empty', None),('product_id', 'empty', None)], )
         if len(list_to_create) > 0:
             cls.CreateProducts_FromCodeValues(env=env, list_codes=list_to_create)
             
         # actualizar información desde 'product.product' para los casos en que no se encuentre el 'product.product'
-        list_to_create = sx.XListDict.SelectDistinct(listdict=list_CodeLot, fields=['lot'], filters=[('lot', 'not empty', None) ,('lot_id', 'empty', None)])   
+        list_to_create = sx.XListDict.SelectDistinct(listdict=list_CodeLot, fields=['product_id','lot'], filters=[('lot', 'not empty', None) ,('lot_id', 'empty', None)])
+        list_to_create = sx.XListDict.from_tuples(list_to_create, ['product_id', 'lot'])
+        
+        
+        
+        
         if len(list_to_create) > 0:
             cls.CreateStockLots_FromCodeValues(env=env, list_lots=list_to_create)
         
         return True, list_CodeLot, entries_invalids
-
-
-    class sz_OdooCodeGC_Controller(http.Controller):
-        @http.route('/api/sz/odoocodegc/ensurecodelot', type='http', methods=['POST'], auth='public', csrf=False)
-        @hlog_api()
-        def superapi_codegc_moves__from_text_codes(self, **kw):
-            fields = kw.get('fields')
-            data = json.loads(request.httprequest.data)
-            textcodes = sx.xobject.tryget(data, 'text_codes')
-            if textcodes: textcodes = sx.XList.ensure(textcodes)
-            else: textcodes = sx.XList.ensure(data)        
-
-            isvalid, entries, entries_invalid = sz_OdooCodeGC.EnsureCodeLot(env=request.env, textcodes=textcodes)
-            
-            # "product_id,lot_id,product_uom_qty,product_uom,name,lot_name")
-            
-        #                    'product_uom': product.uom_id.id,
-        # # #                 'name': product.display_name,
-            if isvalid:
-                stock_moves = sx.XListDict.Select(listdict=entries, fields=["product_id","lot_id","lot_name","product_uom_qty"], mapping={"product_uom_qty": "qty", "lot_name":"lot"})
-                stock_moves = sz_OdooCodeGC.joinCode_ModeID(env=request.env, target_list=stock_moves)
-                # logger.debug(f"entries: {entries}")
-                
-
-                # {'product_id': 421, 'lot_id': 5707, 'entry': '0A214584$1cQxKP404T', 'code': '0A214584', 'qty': 1.0, 'lot': '$1cQxKP404T', 'tracking': 'serial'},
-                return { 'message': 'The products and corresponding lots have been created.', 'entries': entries } 
-            else:
-                return BadRequest({ 'error':  'Bad Request', 'message': 'Invalid entries found', 'entries': entries_invalid })
-        
