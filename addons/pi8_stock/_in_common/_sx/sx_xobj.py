@@ -1,8 +1,21 @@
 import json
 from .._sx import sx_xlist
-class sx_xobject:    
-    @staticmethod
-    def clone(object_to_clone, fields_to_clone, fields_to_set=None):
+class sx_XObj:
+    @classmethod
+    def copy(cls, obj, fields_tocopy):
+        """
+        Extrae campos específicos de un objeto (diccionario).
+
+        :param obj: El objeto de donde extraer los campos.
+        :param fields_to_copy: Una lista de los nombres de los campos a copiar.
+        :return: Un nuevo diccionario solo con los campos especificados.
+        """
+        extracted = {field: obj[field] for field in fields_tocopy if field in obj}
+        return extracted
+    
+    
+    @classmethod
+    def clone(cls, object_to_clone, fields_to_clone, fields_to_set=None):
         """
         Clona un objeto de Odoo.
 
@@ -26,7 +39,8 @@ class sx_xobject:
         # Retornar el diccionario con los datos clonados
         return to_return
     
-    def tryget(object, key, default_value=None):
+    @classmethod
+    def tryget(cls, object, key, default_value=None):
         try:
             to_return = object[key]
             return to_return

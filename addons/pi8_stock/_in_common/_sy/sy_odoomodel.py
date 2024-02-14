@@ -46,7 +46,7 @@ class sy_OdooModel:
 
     @classmethod
     @hlog_atomic()
-    def SearchIn(cls, env, model_name, fields, search_field, search_values, mapping_fields=None):
+    def SearchIn(cls, env, model, search_field, search_values, fields=None, mapping_fields=None):
         """
         Encuentra registros en un modelo de Odoo basándose en una lista de valores para un campo específico, con la opción de especificar campos para recuperar.
 
@@ -57,7 +57,7 @@ class sy_OdooModel:
         :param retrieve_fields: Lista opcional de campos para recuperar.
         :return: Lista de diccionarios representando los registros encontrados, conteniendo únicamente los campos especificados si se proporcionan.
         """
-        model = env[model_name]
+        model = env[model]
         search_values = sx.XList.ensure(search_values)
         domain = [(search_field, 'in', search_values)]
 
@@ -73,14 +73,12 @@ class sy_OdooModel:
         if mapping_fields:
             listdict = sx.XListDict.mapping_fields(listdict=listdict,mapping=mapping_fields, remove_original=True)
 
-
-
         return listdict
     
     
     @classmethod
     @hlog_atomic(enable=True,resalt=True)
-    def SearchNotIn(cls, env, model_name, fields, search_field, search_values, mapping_fields=None):
+    def SearchNotIn(cls, env, model, fields, search_field, search_values, mapping_fields=None):
         """
         Encuentra registros en un modelo de Odoo basándose en una lista de valores que "no coincidan" para un campo específico, con la opción de especificar campos para recuperar.
 
@@ -91,7 +89,7 @@ class sy_OdooModel:
         :param retrieve_fields: Lista opcional de campos para recuperar.
         :return: Lista de diccionarios representando los registros encontrados, conteniendo únicamente los campos especificados si se proporcionan.
         """
-        model = env[model_name]
+        model = env[model]
         search_values = sx.XList.ensure(search_values)
         domain = [(search_field, 'not in', search_values)]
 
@@ -107,4 +105,12 @@ class sy_OdooModel:
         if mapping_fields:
             listdict = sx.XListDict.mapping_fields(listdict=listdict, mapping=mapping_fields, remove_original=True)
 
- 
+    @classmethod
+    @hlog_function()
+    def Join(cls, env, target_data, target_fieldon, model, reference_fieldon, join_fields):
+        # Actualizar información desde 'stock.lot' para los casos en que no se encuentre el lot_name
+        list_values = sx.XListDict.SelectDistinct(listdict=target_data ,fields=target_fieldon, remove_empty=True)
+        reference_data = cls.SearchIn(env, model=model, search_field=reference_fieldon, search_values=list_values)
+        target_data = sx.XListDict.join(target_data, target_field_on=target_fieldon, reference_data=reference_data, reference_field_on=reference_fieldon, join_fields=join_fields)
+        return target_data
+    

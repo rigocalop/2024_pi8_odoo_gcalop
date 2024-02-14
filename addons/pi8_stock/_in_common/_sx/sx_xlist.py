@@ -1,5 +1,24 @@
 import json
+import re
 class sx_XList:
+    @classmethod
+    def _clean_textcodes(cls,text_codes):
+        def _replace_chars(cls, texto):
+        # Elimina los espacios en blanco, los saltos de línea y los retornos de carro
+            return texto.replace(" ", "").replace("\n", "").replace("\r", "").replace("[", "").replace("]", "").replace("\"", "").strip()
+        # Reemplaza diferentes separadores por un único separador (por ejemplo, una coma)
+        text_codes = re.sub(r'[\r\n]+', ',', text_codes)
+        text_codes = re.sub(r',+', ',', text_codes).strip()
+
+        # Dividir el texto por comas y limpiar cada elemento
+        elementos = text_codes.split(',')
+        elementos_limpios = [_replace_chars(elem) for elem in elementos if _replace_chars(elem)]
+
+        # Unir los elementos no vacíos con comas
+        text_codes_limpio = ','.join(elementos_limpios)
+        return text_codes_limpio
+    
+    
     @classmethod
     def convert(cls, text_items, separator=','):
         """

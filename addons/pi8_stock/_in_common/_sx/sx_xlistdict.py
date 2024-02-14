@@ -42,7 +42,7 @@ class sx_XListDict:
     
     @classmethod
     @hlog_atomic()
-    def join(cls, target_data, target_field_on, reference_data, reference_field_on, mapping_fields):
+    def join(cls, target_data, target_field_on, reference_data, reference_field_on, join_fields):
         """
         Realiza una operación de 'join' entre dos listas de diccionarios basada en claves coincidentes.
 
@@ -64,19 +64,27 @@ class sx_XListDict:
         for item in target_data:
             matching_record = reference_map.get(item.get(target_field_on))
             if matching_record:
-                for target_field, reference_field in mapping_fields.items():
+                for reference_field, target_field in join_fields.items():
+                    if target_field == None:
+                        target_field = reference_field
+                        
                     if '[' in reference_field and ']' in reference_field:
                         # Extraer el nombre del campo y el índice
-                        field_name, index = reference_field.split('[')
+                        field_name, index = target_field.split('[')
                         index = int(index.rstrip(']'))
 
                         # Comprobar si el campo existe y es una lista o tupla
                         if field_name in matching_record and isinstance(matching_record[field_name], (list, tuple)):
                             # Extraer el valor usando el índice
                             item[target_field] = matching_record[field_name][index]
+                        else:
+                            raise KeyError(f"Campo '{field_name}' no encontrado o no es una lista/tupla.")
+                        
                     else:
                         if reference_field in matching_record:
                             item[target_field] = matching_record[reference_field]
+                        else:
+                            raise KeyError(f"Campo de referencia '{reference_field}' no encontrado en el registro de referencia.")
 
         return target_data
     
