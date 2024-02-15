@@ -4,7 +4,12 @@ from .zlogger_formatter import *
 from .zlogger import ZLogger
 import traceback as tb
 
-
+class ApiException(Exception):
+    """Exception raised when API are invalid."""
+    def __init__(self, message="Invalid parameter"):
+        self.message = message
+        super().__init__(self.message)
+        
 class ZLoggerException(Exception):
     """ Excepción específica para ZLogger. """
     pass
@@ -114,6 +119,9 @@ def base_execute_and_log(func, args, kwargs, enable, compact, resalt, demo_retur
 
     except ZLoggerException as zle:
         raise ZLoggerException("ZLoggerException capturada")
+    except ApiException as apie:
+        response_content = json.dumps({ "status": "ApiException", "message": apie.message })
+        return Response(response_content, content_type='application/json', status=400)
     except Exception as e:
         log_title = log_init(_logger, log_prefix, func, args, kwargs, const_LOG_INI if not resalt else LOG_LEVEL_FINI_RESALT)
         handle_error(_logger, e, log_prefix, func, original_log_level, run_level, default_error)

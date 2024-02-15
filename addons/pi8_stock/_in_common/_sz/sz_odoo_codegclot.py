@@ -155,10 +155,10 @@ class sz_Odoo_CodegcLot:
         logger = ZLogger.get_logger()
 
         def joinLot_ModeTextCode(env, target_list):
-            return sy.OdooModel.Join(env,target_data=target_list, target_fieldon='lot', model='stock.lot', reference_fieldon='name',join_fields={'id': 'lot_id', 'product_id': None})
+            return sy.Odoo.ORM.Join(env,target_data=target_list, target_fieldon='lot', model='stock.lot', reference_fieldon='name',join_fields={'id': 'lot_id', 'product_id': None})
             
         def joinCode_ModeTextCode(env, target_list):
-            return sy.OdooModel.Join(env,target_data=target_list, target_fieldon='code', model='product.product', reference_fieldon='default_code',join_fields={'id': 'product_id'})
+            return sy.Odoo.ORM.Join(env,target_data=target_list, target_fieldon='code', model='product.product', reference_fieldon='default_code',join_fields={'id': 'product_id'})
         
         def createStockLots_FromCodeValues(env, list_lots):
             lots_to_create = []

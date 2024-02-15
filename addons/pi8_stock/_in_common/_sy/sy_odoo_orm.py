@@ -2,7 +2,7 @@ from .._sx import lib_sx as sx
 from ..zlogger_handlers import *
 from ..zlogger import ZLogger
 from odoo import models
-class sy_OdooModel:
+class sy_Odoo_ORM:
 
     @classmethod
     @hlog_atomic()

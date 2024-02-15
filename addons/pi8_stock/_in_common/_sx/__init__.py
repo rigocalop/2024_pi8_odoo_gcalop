@@ -5,7 +5,7 @@ from .sx_convert_BaseConverter import sx_Base16Converter
 from .._sx.sx_xlist import sx_XList
 from .._sx.sx_xlistdict import sx_XListDict
 from .._sx.sx_model import sx_model
-from .._sx.sx_xdict import Dict, sx_XDict
+from .._sx.sx_xdict import sx_XDict
 from .._sx.sx_xobj import sx_XObj
 
 

@@ -1,17 +1,10 @@
-from ..zlogger_handlers import *
-from odoo import models, _
-from ..zlogger import ZLogger
-from .._sy import lib_sy as sy
 from .._sx import lib_sx as sx
-import re
+from ..zlogger_handlers import *
+from ..zlogger import ZLogger
+from odoo import models
 from odoo import fields as odoo_fields
 from collections import OrderedDict
-
-class sz_Odoo_ORM:
-        
-    # Diccionario de caché a nivel de clase
-    codegc_cache = {}
-
+class sy_Odoo_Model:
     @classmethod
     @hlog_function()
     def first_record_id(cls, env, model):
@@ -37,7 +30,7 @@ class sz_Odoo_ORM:
     
     @classmethod
     @hlog_function()
-    def model_fields(cls, env, model):
+    def fields(cls, env, model):
         """
         Obtiene los campos de un modelo específico en Odoo y los ordena por nombre.
 
@@ -63,7 +56,7 @@ class sz_Odoo_ORM:
 
         return True, campos_simplificados
     
-
+    
     @classmethod
     @hlog_atomic()
     def record_fields_and_values(cls, record, include_field_types=True):
@@ -104,10 +97,12 @@ class sz_Odoo_ORM:
                     field_data['value'] = value
                 record_data[field_name] = field_data['value'] if not include_field_types else field_data
             except Exception as e:
-                error_info = {
-                    'error': str(e),
-                    'type': field.type
-                }
+                error_info = str(e)
+                if include_field_types:
+                    error_info = {
+                        'error': str(e),
+                        'type': field.type
+                    }
                 error_data[field_name] = error_info
 
         if error_data:
@@ -119,7 +114,7 @@ class sz_Odoo_ORM:
     
     @classmethod
     @hlog_function()
-    def model_record_by_id(cls, env, model, record_id=None):
+    def record_by_id(cls, env, model, record_id=None, types = False):
         """
         Obtiene un registro por su ID principal en un modelo específico de Odoo.
 
@@ -140,7 +135,7 @@ class sz_Odoo_ORM:
             record = env[model].browse(record_id)
         
         # Verificar si el registro existe
-        if record.exists():
-            return record
+        if record and record.exists():
+            return True, cls.record_fields_and_values(record=record,include_field_types=types)
         else:
-            return None
+            return False, None
