@@ -93,26 +93,8 @@ class sz_Odoo_CodegcLot:
         return True, to_return
         
     @classmethod
-    @hlog_function()
-    def ValidateCodegcLot(cls, env, codegclot):
-        isvalid, info_base = sy.CodegcLot.validate(codegclot)
-        if not isvalid:
-            return False, info_base
-
-        isvalid, info_odoo = cls._info_codegc(env, codegclot)
-        if isvalid is None:
-            return False, info_odoo
-        else:
-            tracking_base = info_base['tracking'] 
-            tracking_odoo = info_odoo['linea']['tracking']
-            if tracking_base != tracking_odoo:
-                return False, f'El tracking *{tracking_base}* no corresponde al de la linea *{tracking_odoo}*'
-
-            return True, info_odoo
-    
-    @classmethod
     @hlog_atomic()
-    def processTextCodes(cls, env, textcodes, default_values=None):
+    def _processTextCodes(cls, env, textcodes, default_values=None):
         """
         Procesa una lista de códigos de texto de entrada y los clasifica como válidos o inválidos.
         :param entry_textcodes: Lista de cadenas de texto, cada una con formatos como 'codigo$lote*cantidad' o 'codigo&lote*cantidad'.
@@ -148,7 +130,24 @@ class sz_Odoo_CodegcLot:
 
         return valid_entries, invalid_entries
 
+    @classmethod
+    @hlog_function()
+    def ValidateCodegcLot(cls, env, codegclot):
+        isvalid, info_base = sy.CodegcLot.validate(codegclot)
+        if not isvalid:
+            return False, info_base
 
+        isvalid, info_odoo = cls._info_codegc(env, codegclot)
+        if isvalid is None:
+            return False, info_odoo
+        else:
+            tracking_base = info_base['tracking'] 
+            tracking_odoo = info_odoo['linea']['tracking']
+            if tracking_base != tracking_odoo:
+                return False, f'El tracking *{tracking_base}* no corresponde al de la linea *{tracking_odoo}*'
+
+            return True, info_odoo
+        
     @classmethod
     @hlog_superfunc()
     def Ensure(cls, env, textcodes, return_entries=True):
@@ -177,7 +176,7 @@ class sz_Odoo_CodegcLot:
                 to_return = odoomodel.create(lots_to_create)
             return to_return
         
-        def createProducts_FromCodeValues(cls, env, list_codes):
+        def createProducts_FromCodeValues(env, list_codes):
             # Iterate over each product and create new products
             products_to_create = []
             for item in list_codes:
@@ -206,9 +205,7 @@ class sz_Odoo_CodegcLot:
                 to_return = odoomodel.create(products_to_create)
             return to_return
         
-        
-        
-        list_CodeLot, entries_invalids = cls.processTextCodes(env=env, textcodes=textcodes, default_values={ 'product_id': None, 'lot_id': None })
+        list_CodeLot, entries_invalids = cls._processTextCodes(env=env, textcodes=textcodes, default_values={ 'product_id': None, 'lot_id': None })
         if len(entries_invalids) > 0:
             return False, entries_invalids
             
@@ -258,9 +255,14 @@ class sz_Odoo_CodegcLot:
 
     @classmethod
     @hlog_superfunc()
-    def EnsureData(cls, env, entries):
+    def EnsureData(cls, env, entries, joinProduct, joinLot):
         logger = ZLogger.get_logger()
-        data = cls.Ensure(env=env, textcodes=entries, return_entries=True)
-        return data
+        isvalid, data = cls.Ensure(env=env, textcodes=entries, return_entries=True)
+        if not isvalid:
+            return False, data
+                
+        data = sy.Odoo.ORM.Join(env, target_data=data,target_fieldon='product_id',model='product.product', reference_fieldon='id', join_fields=joinProduct)
+        data = sy.Odoo.ORM.Join(env, target_data=data,target_fieldon='lot_id',model='stock.lot', reference_fieldon='id', join_fields=joinLot)
+        return True, data
     
     
