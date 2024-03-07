@@ -103,7 +103,16 @@ class sy_Api:
                 'data': data
             }
             status = status_error
+        
+  
+        
+        try:
+            # Attempt to convert the parameter to an integer
+            response_content = json.dumps(response_content)
+        except Exception:
+            response_content = "ERROR NO CONTROLADO EN EL RETORNO DEL CONTENT"
+            # If conversion fails, raise an ApiParamException
 
-        return Response(json.dumps(response_content), content_type='application/json', status=status)
+        return Response(response_content, content_type='application/json', status=status)
 
     

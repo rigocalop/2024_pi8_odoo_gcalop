@@ -1,7 +1,7 @@
-from ..zlogger_handlers import hlog_api
+from .._in_common.zlogger_handlers import hlog_api
 from odoo import http, _
 from odoo.http import request
-from .._sy import lib_sy as sy
+from .._in_common._sy import lib_sy as sy
 
 class Odoo_Model_Controller(http.Controller):
     @http.route('/api/odoo/model/fields', type='http', methods=['GET'], auth='public', csrf=False)

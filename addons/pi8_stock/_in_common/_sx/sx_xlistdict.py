@@ -68,7 +68,7 @@ class sx_XListDict:
                     if target_field == None:
                         target_field = reference_field
                         
-                    if '[' in reference_field and ']' in reference_field:
+                    if '[' in target_field and ']' in target_field:
                         # Extraer el nombre del campo y el índice
                         field_name, index = target_field.split('[')
                         index = int(index.rstrip(']'))
